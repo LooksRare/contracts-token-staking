@@ -45,7 +45,7 @@
   "scripts": {
     "lint": "eslint '**/*.{js,jsx,ts,tsx}'",
     "compile": "hardhat compile",
-    "compile:force": "hardhat compile --force --ignore ",
+    "compile:force": "hardhat compile --force",
     "test": "hardhat test",
     "test:forge": "forge test",
     "test:coverage": "hardhat coverage && hardhat compile --force"
