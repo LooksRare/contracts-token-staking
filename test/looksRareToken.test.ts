@@ -20,11 +20,7 @@ describe("LooksRareToken", () => {
 
     const LooksRareToken = await ethers.getContractFactory("LooksRareToken");
 
-    looksRareToken = await LooksRareToken.deploy(
-      admin.address,
-      premintAmount,
-      cap
-    );
+    looksRareToken = await LooksRareToken.deploy(admin.address, premintAmount, cap);
     await looksRareToken.deployed();
   });
 
@@ -32,9 +28,7 @@ describe("LooksRareToken", () => {
     it("Owner can mint", async () => {
       const valueToMint = parseEther("100000");
 
-      await expect(
-        looksRareToken.connect(admin).mint(admin.address, valueToMint)
-      )
+      await expect(looksRareToken.connect(admin).mint(admin.address, valueToMint))
         .to.emit(looksRareToken, "Transfer")
         .withArgs(constants.AddressZero, admin.address, valueToMint);
     });
@@ -42,9 +36,9 @@ describe("LooksRareToken", () => {
 
   describe("#2 - Unusual cases", async () => {
     it("Only owner can mint", async () => {
-      await expect(
-        looksRareToken.connect(accounts[1]).mint(admin.address, "0")
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(looksRareToken.connect(accounts[1]).mint(admin.address, "0")).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
 
     it("Cannot deploy if cap is greater than premint amount", async () => {
@@ -52,9 +46,9 @@ describe("LooksRareToken", () => {
 
       const LooksRareToken = await ethers.getContractFactory("LooksRareToken");
 
-      await expect(
-        LooksRareToken.deploy(admin.address, premintAmount, wrongCap)
-      ).to.be.revertedWith("LOOKS: Premint amount is greater than cap");
+      await expect(LooksRareToken.deploy(admin.address, premintAmount, wrongCap)).to.be.revertedWith(
+        "LOOKS: Premint amount is greater than cap"
+      );
     });
   });
 });
