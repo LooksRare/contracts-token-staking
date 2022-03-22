@@ -19,6 +19,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: false,
+      initialBaseFeePerGas: 0,
       mining: {
         auto: true,
         interval: 10000,

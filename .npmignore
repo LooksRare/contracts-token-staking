@@ -1,5 +1,19 @@
-hardhat.config.ts
-scripts
-test
-cache
+node_modules
+.env
 .env*
+coverage
+coverage.json
+typechain
+
+# Hardhat files
+cache
+artifacts
+abis/
+
+# Others 
+lib
+.DS_Store
+
+hardhat.config.ts
+contracts/test
+test/
