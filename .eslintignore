@@ -1,4 +1,7 @@
 node_modules
 artifacts
 cache
-coverage
+coverage*
+gasReporterOutput.json
+typechain
+lib/ds-test

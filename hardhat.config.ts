@@ -19,10 +19,10 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: false,
-      initialBaseFeePerGas: 0,
+      hardfork: "berlin", // Berlin is used (temporarily) to avoid issues with coverage
       mining: {
         auto: true,
-        interval: 10000,
+        interval: 50000,
       },
       gasPrice: "auto",
     },
