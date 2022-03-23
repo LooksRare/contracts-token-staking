@@ -2,8 +2,9 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
 import { MerkleTree } from "merkletreejs";
+
+/* eslint-disable node/no-extraneous-import */
 import { keccak256 } from "js-sha3";
 import { increaseTo } from "./helpers/block-traveller";
 
@@ -68,7 +69,7 @@ describe("LooksRareAirdrop", () => {
       for (const [index, [user, value]] of Object.entries(Object.entries(json))) {
         const signedUser = accounts[Number(index) + 1];
 
-        if (signedUser == accounts[3]) {
+        if (signedUser === accounts[3]) {
           break;
         }
         // Compute the proof for the user
@@ -124,7 +125,7 @@ describe("LooksRareAirdrop", () => {
       for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
         const signedUser = accounts[Number(index) + 1];
 
-        if (user == accounts[3].address) {
+        if (user === accounts[3].address) {
           break;
         }
 
