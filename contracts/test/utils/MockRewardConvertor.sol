@@ -18,10 +18,7 @@ contract MockRewardConvertor is IRewardConvertor {
         uint256 amount,
         bytes calldata
     ) external override returns (uint256) {
-        require(
-            msg.sender == FEE_SHARING_ADDRESS,
-            "Convert: Not the fee sharing"
-        );
+        require(msg.sender == FEE_SHARING_ADDRESS, "Convert: Not the fee sharing");
 
         uint256 amountToTransfer = IERC20(tokenToBuy).balanceOf(address(this));
 

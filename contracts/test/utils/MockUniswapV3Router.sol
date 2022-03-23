@@ -29,41 +29,22 @@ contract MockUniswapV3Router is ISwapRouter {
         override
         returns (uint256 amountOut)
     {
-        IERC20(params.tokenIn).safeTransferFrom(
-            msg.sender,
-            address(this),
-            params.amountIn
-        );
+        IERC20(params.tokenIn).safeTransferFrom(msg.sender, address(this), params.amountIn);
         amountOut = (params.amountIn * multiplier) / PRECISION_MULTIPLIER;
         IERC20(params.tokenOut).transfer(msg.sender, amountOut);
 
         return amountOut;
     }
 
-    function exactInput(ExactInputParams calldata)
-        external
-        payable
-        override
-        returns (uint256 amountOut)
-    {
+    function exactInput(ExactInputParams calldata) external payable override returns (uint256 amountOut) {
         return 0;
     }
 
-    function exactOutputSingle(ExactOutputSingleParams calldata)
-        external
-        payable
-        override
-        returns (uint256 amountIn)
-    {
+    function exactOutputSingle(ExactOutputSingleParams calldata) external payable override returns (uint256 amountIn) {
         return 0;
     }
 
-    function exactOutput(ExactOutputParams calldata)
-        external
-        payable
-        override
-        returns (uint256 amountIn)
-    {
+    function exactOutput(ExactOutputParams calldata) external payable override returns (uint256 amountIn) {
         return 0;
     }
 

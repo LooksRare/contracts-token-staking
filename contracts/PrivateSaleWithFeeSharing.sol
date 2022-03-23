@@ -90,10 +90,7 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
         uint256 _maxBlockForWithdrawal,
         uint256 _totalLooksDistributed
     ) {
-        require(
-            _maxBlockForWithdrawal > block.number,
-            "Owner: MaxBlockForWithdrawal must be after block number"
-        );
+        require(_maxBlockForWithdrawal > block.number, "Owner: MaxBlockForWithdrawal must be after block number");
 
         looksRareToken = IERC20(_looksRareToken);
         rewardToken = IERC20(_rewardToken);
@@ -107,16 +104,10 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @notice Deposit ETH to this contract
      */
     function deposit() external payable nonReentrant {
-        require(
-            currentPhase == SalePhase.Deposit,
-            "Deposit: Phase must be Deposit"
-        );
+        require(currentPhase == SalePhase.Deposit, "Deposit: Phase must be Deposit");
         require(userInfo[msg.sender].tier != 0, "Deposit: Not whitelisted");
         require(!userInfo[msg.sender].hasDeposited, "Deposit: Has deposited");
-        require(
-            msg.value == allocationCostPerTier[userInfo[msg.sender].tier],
-            "Deposit: Wrong amount"
-        );
+        require(msg.value == allocationCostPerTier[userInfo[msg.sender].tier], "Deposit: Wrong amount");
 
         userInfo[msg.sender].hasDeposited = true;
         totalAmountCommitted += msg.value;
@@ -128,28 +119,18 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @notice Harvest WETH
      */
     function harvest() external nonReentrant {
-        require(
-            currentPhase == SalePhase.Staking,
-            "Harvest: Phase must be Staking"
-        );
-        require(
-            userInfo[msg.sender].hasDeposited,
-            "Harvest: User not eligible"
-        );
+        require(currentPhase == SalePhase.Staking, "Harvest: Phase must be Staking");
+        require(userInfo[msg.sender].hasDeposited, "Harvest: User not eligible");
 
-        uint256 totalTokensReceived = rewardToken.balanceOf(address(this)) +
-            totalRewardTokensDistributedToStakers;
+        uint256 totalTokensReceived = rewardToken.balanceOf(address(this)) + totalRewardTokensDistributedToStakers;
 
-        uint256 pendingRewardsInWETH = ((totalTokensReceived *
-            allocationCostPerTier[userInfo[msg.sender].tier]) /
-            totalAmountCommitted) -
-            userInfo[msg.sender].rewardsDistributedToAccount;
+        uint256 pendingRewardsInWETH = ((totalTokensReceived * allocationCostPerTier[userInfo[msg.sender].tier]) /
+            totalAmountCommitted) - userInfo[msg.sender].rewardsDistributedToAccount;
 
         // Revert if amount to transfer is equal to 0
         require(pendingRewardsInWETH != 0, "Harvest: Nothing to transfer");
 
-        userInfo[msg.sender]
-            .rewardsDistributedToAccount += pendingRewardsInWETH;
+        userInfo[msg.sender].rewardsDistributedToAccount += pendingRewardsInWETH;
         totalRewardTokensDistributedToStakers += pendingRewardsInWETH;
 
         // Transfer funds to account
@@ -162,32 +143,19 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @notice Withdraw LOOKS + pending WETH
      */
     function withdraw() external nonReentrant {
-        require(
-            currentPhase == SalePhase.Withdraw,
-            "Withdraw: Phase must be Withdraw"
-        );
-        require(
-            userInfo[msg.sender].hasDeposited,
-            "Withdraw: User not eligible"
-        );
-        require(
-            !userInfo[msg.sender].hasWithdrawn,
-            "Withdraw: Has already withdrawn"
-        );
+        require(currentPhase == SalePhase.Withdraw, "Withdraw: Phase must be Withdraw");
+        require(userInfo[msg.sender].hasDeposited, "Withdraw: User not eligible");
+        require(!userInfo[msg.sender].hasWithdrawn, "Withdraw: Has already withdrawn");
 
         // Final harvest logic
         {
-            uint256 totalTokensReceived = rewardToken.balanceOf(address(this)) +
-                totalRewardTokensDistributedToStakers;
-            uint256 pendingRewardsInWETH = ((totalTokensReceived *
-                allocationCostPerTier[userInfo[msg.sender].tier]) /
-                totalAmountCommitted) -
-                userInfo[msg.sender].rewardsDistributedToAccount;
+            uint256 totalTokensReceived = rewardToken.balanceOf(address(this)) + totalRewardTokensDistributedToStakers;
+            uint256 pendingRewardsInWETH = ((totalTokensReceived * allocationCostPerTier[userInfo[msg.sender].tier]) /
+                totalAmountCommitted) - userInfo[msg.sender].rewardsDistributedToAccount;
 
             // Skip if equal to 0
             if (pendingRewardsInWETH > 0) {
-                userInfo[msg.sender]
-                    .rewardsDistributedToAccount += pendingRewardsInWETH;
+                userInfo[msg.sender].rewardsDistributedToAccount += pendingRewardsInWETH;
                 totalRewardTokensDistributedToStakers += pendingRewardsInWETH;
 
                 // Transfer funds to sender
@@ -201,18 +169,12 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
         userInfo[msg.sender].hasWithdrawn = true;
 
         // Calculate amount of LOOKS to transfer based on the tier
-        uint256 looksAmountToTransfer = allocationCostPerTier[
-            userInfo[msg.sender].tier
-        ] * priceOfETHInLOOKS;
+        uint256 looksAmountToTransfer = allocationCostPerTier[userInfo[msg.sender].tier] * priceOfETHInLOOKS;
 
         // Transfer LOOKS token to sender
         looksRareToken.safeTransfer(msg.sender, looksAmountToTransfer);
 
-        emit Withdraw(
-            msg.sender,
-            userInfo[msg.sender].tier,
-            looksAmountToTransfer
-        );
+        emit Withdraw(msg.sender, userInfo[msg.sender].tier, looksAmountToTransfer);
     }
 
     /**
@@ -221,10 +183,7 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      */
     function updateSalePhaseToWithdraw() external {
         require(currentPhase == SalePhase.Staking, "Phase: Must be Staking");
-        require(
-            block.number >= blockForWithdrawal,
-            "Phase: Too early to update sale status"
-        );
+        require(block.number >= blockForWithdrawal, "Phase: Too early to update sale status");
 
         // Update phase to Withdraw
         currentPhase = SalePhase.Withdraw;
@@ -237,10 +196,7 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @param _user address of the user
      */
     function removeUserFromWhitelist(address _user) external onlyOwner {
-        require(
-            currentPhase == SalePhase.Pending,
-            "Owner: Phase must be Pending"
-        );
+        require(currentPhase == SalePhase.Pending, "Owner: Phase must be Pending");
         require(userInfo[_user].tier != 0, "Owner: Tier not set for user");
 
         numberOfParticipantsForATier[userInfo[_user].tier]--;
@@ -254,18 +210,9 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @param _tier tier of sale
      * @param _allocationCostInETH allocation in ETH for the tier
      */
-    function setAllocationCostPerTier(uint8 _tier, uint256 _allocationCostInETH)
-        external
-        onlyOwner
-    {
-        require(
-            currentPhase == SalePhase.Pending,
-            "Owner: Phase must be Pending"
-        );
-        require(
-            _tier > 0 && _tier <= NUMBER_TIERS,
-            "Owner: Tier outside of range"
-        );
+    function setAllocationCostPerTier(uint8 _tier, uint256 _allocationCostInETH) external onlyOwner {
+        require(currentPhase == SalePhase.Pending, "Owner: Phase must be Pending");
+        require(_tier > 0 && _tier <= NUMBER_TIERS, "Owner: Tier outside of range");
 
         allocationCostPerTier[_tier] = _allocationCostInETH;
 
@@ -276,10 +223,7 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @notice Update block deadline for withdrawal of LOOKS
      * @param _blockForWithdrawal block for withdrawing LOOKS for sale participants
      */
-    function setBlockForWithdrawal(uint256 _blockForWithdrawal)
-        external
-        onlyOwner
-    {
+    function setBlockForWithdrawal(uint256 _blockForWithdrawal) external onlyOwner {
         require(
             _blockForWithdrawal <= MAX_BLOCK_FOR_WITHDRAWAL,
             "Owner: Block for withdrawal must be lower than max block for withdrawal"
@@ -294,14 +238,8 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @notice Set price of 1 ETH in LOOKS
      * @param _priceOfETHinLOOKS price of 1 ETH in LOOKS
      */
-    function setPriceOfETHInLOOKS(uint256 _priceOfETHinLOOKS)
-        external
-        onlyOwner
-    {
-        require(
-            currentPhase == SalePhase.Pending,
-            "Owner: Phase must be Pending"
-        );
+    function setPriceOfETHInLOOKS(uint256 _priceOfETHinLOOKS) external onlyOwner {
+        require(currentPhase == SalePhase.Pending, "Owner: Phase must be Pending");
         priceOfETHInLOOKS = _priceOfETHinLOOKS;
 
         emit NewPriceOfETHInLOOKS(_priceOfETHinLOOKS);
@@ -313,31 +251,18 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      */
     function updateSalePhase(SalePhase _newSalePhase) external onlyOwner {
         if (_newSalePhase == SalePhase.Deposit) {
-            require(
-                currentPhase == SalePhase.Pending,
-                "Owner: Phase must be Pending"
-            );
+            require(currentPhase == SalePhase.Pending, "Owner: Phase must be Pending");
 
             // Risk checks
             require(priceOfETHInLOOKS > 0, "Owner: Exchange rate must be > 0");
+            require(getMaxAmountLOOKSToDistribute() == TOTAL_LOOKS_DISTRIBUTED, "Owner: Wrong amount of LOOKS");
             require(
-                getMaxAmountLOOKSToDistribute() == TOTAL_LOOKS_DISTRIBUTED,
-                "Owner: Wrong amount of LOOKS"
-            );
-            require(
-                looksRareToken.balanceOf(address(this)) >=
-                    TOTAL_LOOKS_DISTRIBUTED,
+                looksRareToken.balanceOf(address(this)) >= TOTAL_LOOKS_DISTRIBUTED,
                 "Owner: Not enough LOOKS in the contract"
             );
-            require(
-                blockForWithdrawal > block.number,
-                "Owner: Block for withdrawal wrongly set"
-            );
+            require(blockForWithdrawal > block.number, "Owner: Block for withdrawal wrongly set");
         } else if (_newSalePhase == SalePhase.Over) {
-            require(
-                currentPhase == SalePhase.Deposit,
-                "Owner: Phase must be Deposit"
-            );
+            require(currentPhase == SalePhase.Deposit, "Owner: Phase must be Deposit");
         } else {
             revert("Owner: Cannot update to this phase");
         }
@@ -360,11 +285,8 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
         require(success, "Owner: Transfer fail");
 
         // If some tiered users did not participate, transfer the LOOKS surplus to contract owner
-        if (
-            totalAmountCommitted * priceOfETHInLOOKS < (TOTAL_LOOKS_DISTRIBUTED)
-        ) {
-            uint256 tokenAmountToReturnInLOOKS = TOTAL_LOOKS_DISTRIBUTED -
-                (totalAmountCommitted * priceOfETHInLOOKS);
+        if (totalAmountCommitted * priceOfETHInLOOKS < (TOTAL_LOOKS_DISTRIBUTED)) {
+            uint256 tokenAmountToReturnInLOOKS = TOTAL_LOOKS_DISTRIBUTED - (totalAmountCommitted * priceOfETHInLOOKS);
             looksRareToken.safeTransfer(msg.sender, tokenAmountToReturnInLOOKS);
         }
 
@@ -380,18 +302,9 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @param _users array of user addresses
      * @param _tier tier for the array of users
      */
-    function whitelistUsers(address[] calldata _users, uint8 _tier)
-        external
-        onlyOwner
-    {
-        require(
-            currentPhase == SalePhase.Pending,
-            "Owner: Phase must be Pending"
-        );
-        require(
-            _tier > 0 && _tier <= NUMBER_TIERS,
-            "Owner: Tier outside of range"
-        );
+    function whitelistUsers(address[] calldata _users, uint8 _tier) external onlyOwner {
+        require(currentPhase == SalePhase.Pending, "Owner: Phase must be Pending");
+        require(_tier > 0 && _tier <= NUMBER_TIERS, "Owner: Tier outside of range");
 
         for (uint256 i = 0; i < _users.length; i++) {
             require(userInfo[_users[i]].tier == 0, "Owner: Tier already set");
@@ -408,21 +321,13 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
      * @notice Retrieve amount of reward token (WETH) a user can collect
      * @param user address of the user who participated in the private sale
      */
-    function calculatePendingRewards(address user)
-        external
-        view
-        returns (uint256)
-    {
-        if (
-            userInfo[user].hasDeposited == false || userInfo[user].hasWithdrawn
-        ) {
+    function calculatePendingRewards(address user) external view returns (uint256) {
+        if (userInfo[user].hasDeposited == false || userInfo[user].hasWithdrawn) {
             return 0;
         }
 
-        uint256 totalTokensReceived = rewardToken.balanceOf(address(this)) +
-            totalRewardTokensDistributedToStakers;
-        uint256 pendingRewardsInWETH = ((totalTokensReceived *
-            allocationCostPerTier[userInfo[user].tier]) /
+        uint256 totalTokensReceived = rewardToken.balanceOf(address(this)) + totalRewardTokensDistributedToStakers;
+        uint256 pendingRewardsInWETH = ((totalTokensReceived * allocationCostPerTier[userInfo[user].tier]) /
             totalAmountCommitted) - userInfo[user].rewardsDistributedToAccount;
 
         return pendingRewardsInWETH;
@@ -431,14 +336,9 @@ contract PrivateSaleWithFeeSharing is Ownable, ReentrancyGuard {
     /**
      * @notice Retrieve max amount to distribute (in LOOKS) for sale
      */
-    function getMaxAmountLOOKSToDistribute()
-        public
-        view
-        returns (uint256 maxAmountCollected)
-    {
+    function getMaxAmountLOOKSToDistribute() public view returns (uint256 maxAmountCollected) {
         for (uint8 i = 1; i <= NUMBER_TIERS; i++) {
-            maxAmountCollected += (allocationCostPerTier[i] *
-                numberOfParticipantsForATier[i]);
+            maxAmountCollected += (allocationCostPerTier[i] * numberOfParticipantsForATier[i]);
         }
 
         return maxAmountCollected * priceOfETHInLOOKS;
