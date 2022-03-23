@@ -2,10 +2,11 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { advanceBlockTo } from "./helpers/time";
 import { defaultAbiCoder } from "ethers/lib/utils";
+import * as blockTraveller from "./helpers/block-traveller";
 
 const { parseEther } = utils;
+const { advanceBlockTo } = blockTraveller;
 
 describe("FeeSharingSystem", () => {
   let feeSharingSetter: Contract;
