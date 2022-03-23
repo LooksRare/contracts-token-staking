@@ -17,6 +17,17 @@
     "type": "git",
     "url": "https://github.com/LooksRare/looksrare-staking.git"
   },
+  "scripts": {
+    "compile": "hardhat compile",
+    "compile:force": "hardhat compile --force",
+    "format:check": "prettier --check '**/*.{js,jsx,ts,tsx,sol,json,md}'",
+    "format:write": "prettier --write '**/*.{js,jsx,ts,tsx,json,md}'",
+    "lint": "eslint '**/*.{js,jsx,ts,tsx}'",
+    "prepare": "husky install",
+    "test": "hardhat test",
+    "test:forge": "forge test",
+    "test:coverage": "hardhat coverage && hardhat compile --force"
+  },
   "dependencies": {
     "@openzeppelin/contracts": "4.4.2"
   },
@@ -45,6 +56,7 @@
     "hardhat": "^2.9.1",
     "hardhat-abi-exporter": "^2.8.0",
     "hardhat-gas-reporter": "^1.0.4",
+    "husky": "^7.0.4",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
     "solhint": "^3.3.6",
@@ -52,13 +64,5 @@
     "ts-node": "^10.1.0",
     "typechain": "^5.1.2",
     "typescript": "^4.5.2"
-  },
-  "scripts": {
-    "lint": "eslint '**/*.{js,jsx,ts,tsx}'",
-    "compile": "hardhat compile",
-    "compile:force": "hardhat compile --force",
-    "test": "hardhat test",
-    "test:forge": "forge test",
-    "test:coverage": "hardhat coverage && hardhat compile --force"
   }
 }
