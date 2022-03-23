@@ -36,3 +36,16 @@ export async function advanceBlockTo(targetBlock: BigNumber): Promise<void> {
     await network.provider.send("hardhat_mine", [numberBlocks.toHexString()]);
   }
 }
+
+export async function increaseTo(targetTime: BigNumber): Promise<void> {
+  const currentTime = BigNumber.from(await latest());
+  if (targetTime.lt(currentTime)) {
+    throw Error(`Target·time·(${targetTime})·is·lower·than·current·time·#(${currentTime})`);
+  }
+
+  await network.provider.send("evm_setNextBlockTimestamp", [targetTime.toHexString()]);
+}
+
+export async function latest(): Promise<number> {
+  return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+}
