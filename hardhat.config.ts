@@ -22,7 +22,7 @@ const config: HardhatUserConfig = {
       hardfork: "berlin", // Berlin is used (temporarily) to avoid issues with coverage
       mining: {
         auto: true,
-        interval: 10000,
+        interval: 50000,
       },
       gasPrice: "auto",
     },
