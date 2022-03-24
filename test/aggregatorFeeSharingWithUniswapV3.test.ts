@@ -2,9 +2,8 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import * as blockTraveller from "./helpers/block-traveller";
+import { advanceBlock, advanceBlockTo, pauseAutomine, resumeAutomine } from "./helpers/block-traveller";
 
-const { advanceBlockTo } = blockTraveller;
 const { parseEther } = utils;
 
 async function setupUsers(
@@ -17,9 +16,7 @@ async function setupUsers(
   for (const user of users) {
     await looksRareToken.connect(admin).transfer(user.address, parseEther("200"));
     await looksRareToken.connect(user).approve(feeSharingSystem.address, constants.MaxUint256);
-
     await looksRareToken.connect(user).approve(aggregator.address, constants.MaxUint256);
-
     await aggregator.connect(user).deposit(parseEther("100"));
   }
 }
@@ -41,11 +38,10 @@ describe("AggregatorFeeSharing", () => {
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
-
     admin = accounts[0];
     const tokenSplitter = accounts[19];
-    const premintReceiver = admin;
 
+    const premintReceiver = admin;
     const premintAmount = parseEther("6250");
     const cap = parseEther("25000"); // 25,000 tokens
 
@@ -95,7 +91,6 @@ describe("AggregatorFeeSharing", () => {
       rewardToken.address,
       tokenDistributor.address
     );
-
     await feeSharingSystem.deployed();
 
     const minRewardDurationInBlocks = "30";
@@ -222,10 +217,10 @@ describe("AggregatorFeeSharing", () => {
       // Advanced to the end of the first fee-sharing
       await advanceBlockTo(BigNumber.from(await tokenDistributor.START_BLOCK()).add("49"));
 
-      // Withdraw all
+      // User1 withdraws all
       let tx = await aggregator.connect(user1).withdrawAll();
 
-      // 50 WETH sold for 100 LOOKS
+      // 50 WETH is sold for 100 LOOKS
       await expect(tx)
         .to.emit(aggregator, "ConversionToLOOKS")
         .withArgs(parseEther("49.99999999999999980"), parseEther("99.9999999999999996"));
@@ -297,7 +292,6 @@ describe("AggregatorFeeSharing", () => {
       await rewardToken.connect(admin).transfer(aggregator.address, parseEther("0.999"));
 
       const tx = await aggregator.connect(admin).harvestAndSellAndCompound();
-
       // Amount is equal to the threshold to trigger the selling
       await expect(tx).to.emit(aggregator, "ConversionToLOOKS").withArgs(parseEther("0.999"), parseEther("0.999"));
       // Amount is lower than threshold to trigger the deposit
@@ -341,6 +335,20 @@ describe("AggregatorFeeSharing", () => {
       await expect(aggregator.connect(admin).harvestAndSellAndCompound()).to.be.revertedWith("Harvest: No share");
     });
 
+    it("Cannot harvest if already harvested in same block", async () => {
+      const [user1, user2, user3] = [accounts[1], accounts[2], accounts[3]];
+      await setupUsers(feeSharingSystem, looksRareToken, aggregator, admin, [user1, user2, user3]);
+      await pauseAutomine();
+      await aggregator.connect(admin).harvestAndSellAndCompound();
+      const tx = await aggregator.connect(admin).harvestAndSellAndCompound();
+      const pendingBlock = await ethers.provider.send("eth_getBlockByNumber", ["pending", false]);
+      // Verify there are 2+ txs in the mempool
+      assert.isAtLeast(pendingBlock.transactions.length, 2);
+      await advanceBlock();
+      await resumeAutomine();
+      await expect(tx.wait()).to.be.reverted;
+    });
+
     it("Faulty router doesn't throw revertion on harvesting operations if it fails to sell", async () => {
       const MockFaultyUniswapV3Router = await ethers.getContractFactory("MockFaultyUniswapV3Router");
       const faultyUniswapRouter = await MockFaultyUniswapV3Router.deploy();
@@ -379,17 +387,33 @@ describe("AggregatorFeeSharing", () => {
       await expect(tx).to.emit(aggregator, "HarvestStop");
     });
 
-    it("Owner can update threshold", async () => {
+    it("Owner can update threshold amount", async () => {
       const tx = await aggregator.connect(admin).updateThresholdAmount(parseEther("5"));
       await expect(tx).to.emit(aggregator, "NewThresholdAmount").withArgs(parseEther("5"));
     });
 
+    it("Owner can adjust buffer block only within limits", async () => {
+      const MAXIMUM_HARVEST_BUFFER_BLOCKS = await aggregator.MAXIMUM_HARVEST_BUFFER_BLOCKS();
+      const tx = await aggregator.connect(admin).updateHarvestBufferBlocks(MAXIMUM_HARVEST_BUFFER_BLOCKS);
+      await expect(tx).to.emit(aggregator, "NewHarvestBufferBlocks").withArgs(MAXIMUM_HARVEST_BUFFER_BLOCKS);
+
+      await expect(
+        aggregator.connect(admin).updateHarvestBufferBlocks(MAXIMUM_HARVEST_BUFFER_BLOCKS.add("1"))
+      ).to.be.revertedWith("Owner: Must be below MAXIMUM_HARVEST_BUFFER_BLOCKS");
+    });
+
     it("Owner can reset maximum allowance for LOOKS token", async () => {
       const tx = await aggregator.connect(admin).checkAndAdjustLOOKSTokenAllowanceIfRequired();
-
       await expect(tx)
         .to.emit(looksRareToken, "Approval")
         .withArgs(aggregator.address, feeSharingSystem.address, constants.MaxUint256);
+    });
+
+    it("Owner can reset maximum allowance for reward token", async () => {
+      const tx = await aggregator.connect(admin).checkAndAdjustRewardTokenAllowanceIfRequired();
+      await expect(tx)
+        .to.emit(rewardToken, "Approval")
+        .withArgs(aggregator.address, uniswapRouter.address, constants.MaxUint256);
     });
 
     it("Owner can pause/unpause", async () => {
@@ -413,6 +437,14 @@ describe("AggregatorFeeSharing", () => {
       );
     });
 
+    it("Owner can update minPriceLOOKSInWETH", async () => {
+      // 1 LOOKS is at least equal to 0.01 WETH
+      // 1 WETH is at most equal to 100 LOOKS
+      const tx = await aggregator.connect(admin).updateMinPriceOfLOOKSInWETH(parseEther("0.01"));
+      await expect(tx).to.emit(aggregator, "NewMinimumPriceOfLOOKSInWETH").withArgs(parseEther("0.01"));
+      assert.deepEqual(await aggregator.minPriceLOOKSInWETH(), parseEther("0.01"));
+    });
+
     it("Only owner can call functions for onlyOwner", async () => {
       const [user1, user2, user3] = [accounts[1], accounts[2], accounts[3]];
       await setupUsers(feeSharingSystem, looksRareToken, aggregator, admin, [user1, user2, user3]);
@@ -426,6 +458,9 @@ describe("AggregatorFeeSharing", () => {
       await expect(aggregator.connect(user1).updateThresholdAmount("10")).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
+      await expect(aggregator.connect(user1).updateMinPriceOfLOOKSInWETH(parseEther("0.01"))).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
       await expect(aggregator.connect(user1).pause()).to.be.revertedWith("Ownable: caller is not the owner");
       await expect(aggregator.connect(user1).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
       await expect(aggregator.connect(user1).startHarvest()).to.be.revertedWith("Ownable: caller is not the owner");
@@ -433,7 +468,9 @@ describe("AggregatorFeeSharing", () => {
       await expect(aggregator.connect(user1).checkAndAdjustLOOKSTokenAllowanceIfRequired()).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
-
+      await expect(aggregator.connect(user1).checkAndAdjustRewardTokenAllowanceIfRequired()).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
       await expect(aggregator.connect(user1).stopHarvest()).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
