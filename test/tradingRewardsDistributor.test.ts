@@ -14,7 +14,7 @@ function computeHash(user: string, amount: string) {
   return Buffer.from(utils.solidityKeccak256(["address", "uint256"], [user, amount]).slice(2), "hex");
 }
 
-describe("LooksRareAirdrop", () => {
+describe("TradingRewardsDistributor", () => {
   let mockLooksRareToken: Contract;
   let tradingRewardsDistributor: Contract;
 

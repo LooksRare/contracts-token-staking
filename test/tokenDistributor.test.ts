@@ -139,13 +139,11 @@ describe("TokenDistributor", () => {
       assert.deepEqual(await tokenDistributor.endBlock(), startBlock.add("400"));
 
       tx = await tokenDistributor.connect(user3).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user3.address, parseEther("1356.1926990348"), parseEther("1256.1926990348"));
 
       tx = await tokenDistributor.connect(user4).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user4.address, parseEther("1356.1926990348"), parseEther("1256.1926990348"));
@@ -175,11 +173,9 @@ describe("TokenDistributor", () => {
         BigNumber.from("100"),
         BigNumber.from("100"),
       ];
-
       const numberPeriods = "4";
 
       const TokenDistributor = await ethers.getContractFactory("TokenDistributor");
-
       tokenDistributor = await TokenDistributor.deploy(
         looksRareToken.address,
         tokenSplitter.address,
@@ -191,7 +187,6 @@ describe("TokenDistributor", () => {
       );
 
       await tokenDistributor.deployed();
-
       await looksRareToken.connect(admin).transferOwnership(tokenDistributor.address);
 
       // Each user receives 500 LOOKS tokens
@@ -200,7 +195,6 @@ describe("TokenDistributor", () => {
         await looksRareToken.connect(user).approve(tokenDistributor.address, constants.MaxUint256);
 
         const tx = await tokenDistributor.connect(user).deposit(parseEther("100"));
-
         await expect(tx)
           .to.emit(tokenDistributor, "Deposit")
           .withArgs(user.address, parseEther("100"), parseEther("0"));
@@ -214,7 +208,6 @@ describe("TokenDistributor", () => {
 
       // 120 * 25 / 4 + 25 * 30/4 = 937.5
       let tx = await tokenDistributor.connect(user1).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user1.address, parseEther("1037.5"), parseEther("937.5"));
@@ -234,7 +227,6 @@ describe("TokenDistributor", () => {
 
       // 937.5 + 25 * 30/3 + 100 * 7.5/3 + 25 * 3.75/3 = 1468.75
       tx = await tokenDistributor.connect(user2).withdraw(parseEther("50"));
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user2.address, parseEther("50"), parseEther("1468.75"));
@@ -250,7 +242,6 @@ describe("TokenDistributor", () => {
 
       // 1518.75 / (1518.75 + 200) * 75 * 3.75 = 248.522727272175
       tx = await tokenDistributor.connect(user2).harvestAndCompound();
-
       await expect(tx).to.emit(tokenDistributor, "Compound").withArgs(user2.address, parseEther("248.522727272175"));
 
       // Equal to the sum of the compounded amount + previously harvestedAmount + half of the original deposit (50)
@@ -260,19 +251,16 @@ describe("TokenDistributor", () => {
       assert.deepEqual(await tokenDistributor.endBlock(), startBlock.add("275"));
 
       tx = await tokenDistributor.connect(user2).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user2.address, parseEther("1767.272727272175"), parseEther("0"));
 
       tx = await tokenDistributor.connect(user3).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user3.address, parseEther("1585.1136363636"), parseEther("1485.1136363636"));
 
       tx = await tokenDistributor.connect(user4).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user4.address, parseEther("1585.1136363636"), parseEther("1485.1136363636"));
@@ -292,7 +280,6 @@ describe("TokenDistributor", () => {
 
       // (10 * 30) / 4 = 75 tokens pending (the new tx moves by 1 block)
       const tx = await tokenDistributor.connect(user1).withdrawAll();
-
       await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
         .withArgs(user1.address, parseEther("175"), parseEther("75"));
@@ -309,7 +296,6 @@ describe("TokenDistributor", () => {
 
       // (10 * 30) / 4 = 75 tokens pending (the new tx moves by 1 block)
       const tx = await tokenDistributor.connect(user1).harvestAndCompound();
-
       await expect(tx).to.emit(tokenDistributor, "Compound").withArgs(user1.address, parseEther("75"));
 
       // 10 * 70 = 700 tokens for token splitter (EOA for this test)
@@ -328,7 +314,6 @@ describe("TokenDistributor", () => {
 
       // 30 * 1 block = 30
       tx = await tokenDistributor.connect(admin).updatePool();
-
       await expect(tx)
         .to.emit(looksRareToken, "Transfer")
         .withArgs(constants.AddressZero, tokenDistributor.address, parseEther("30"));
@@ -353,13 +338,11 @@ describe("TokenDistributor", () => {
       await advanceBlockTo(startBlock);
 
       tx = await tokenDistributor.connect(user1).deposit(parseEther("100"));
-
       await expect(tx).to.emit(tokenDistributor, "Deposit").withArgs(user1.address, parseEther("100"), parseEther("0"));
     });
 
     it("User can deposit twice before start and harvest remains 0", async () => {
       const tx = await tokenDistributor.connect(user1).deposit(parseEther("100"));
-
       await expect(tx).to.emit(tokenDistributor, "Deposit").withArgs(user1.address, parseEther("100"), parseEther("0"));
     });
   });
@@ -369,7 +352,6 @@ describe("TokenDistributor", () => {
       let rewardsPerBlockForStaking = [parseEther("30"), parseEther("15"), parseEther("7.5"), parseEther("3.75")];
       let rewardsPerBlockForOthers = [parseEther("70"), parseEther("35"), parseEther("17.5"), parseEther("8.75")];
       let periodLengthesInBlocks = [BigNumber.from("100"), BigNumber.from("100"), BigNumber.from("100")];
-
       const numberPeriods = "4";
 
       // 30 * 100 + 15 * 100 + 7.5 * 100 + 3.75 * 100 = 5625 tokens to be distributed to stakers

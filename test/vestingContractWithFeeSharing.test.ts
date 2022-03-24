@@ -55,7 +55,7 @@ describe("VestingContractWithFeeSharing", () => {
       await weth.connect(admin).transfer(vestingContract.address, parseEther("20"));
 
       let tx = await vestingContract.connect(admin).withdrawOtherCurrency(weth.address);
-      expect(tx).to.emit(vestingContract, "OtherTokensWithdrawn").withArgs(weth.address, parseEther("20"));
+      await expect(tx).to.emit(vestingContract, "OtherTokensWithdrawn").withArgs(weth.address, parseEther("20"));
 
       // Transfer 500k LOOKS to Vesting Contract
       await looksRareToken.connect(admin).transfer(vestingContract.address, maxAmountToWithdraw);
@@ -68,7 +68,7 @@ describe("VestingContractWithFeeSharing", () => {
 
       // Admin unlocks tokens
       tx = await vestingContract.connect(admin).unlockLooksRareToken();
-      expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(maxAmountToWithdraw);
+      await expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(maxAmountToWithdraw);
 
       // Verify next period, maxAmountToWithdrawForNextPeriod are adjusted accordingly
       assert.equal((await vestingContract.numberPastUnlocks()).toString(), "1");
@@ -85,7 +85,7 @@ describe("VestingContractWithFeeSharing", () => {
 
       // Admin unlocks tokens
       tx = await vestingContract.connect(admin).unlockLooksRareToken();
-      expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(parseEther("400000"));
+      await expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(parseEther("400000"));
 
       // Verify next period, maxAmountToWithdrawForNextPeriod are adjusted accordingly
       assert.equal((await vestingContract.numberPastUnlocks()).toString(), "2");
@@ -98,7 +98,7 @@ describe("VestingContractWithFeeSharing", () => {
 
       // Admin unlocks tokens
       tx = await vestingContract.connect(admin).unlockLooksRareToken();
-      expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(parseEther("600000"));
+      await expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(parseEther("600000"));
 
       // Verify next period, maxAmountToWithdrawForNextPeriod are adjusted accordingly
       assert.equal((await vestingContract.numberPastUnlocks()).toString(), "3");
@@ -111,7 +111,7 @@ describe("VestingContractWithFeeSharing", () => {
 
       // Admin unlocks tokens
       tx = await vestingContract.connect(admin).unlockLooksRareToken();
-      expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(maxAmountToWithdraw);
+      await expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs(maxAmountToWithdraw);
 
       // Verify number of past unlocks period is adjusted accordingly
       assert.equal((await vestingContract.numberPastUnlocks()).toString(), "4");
@@ -119,7 +119,7 @@ describe("VestingContractWithFeeSharing", () => {
       // AFTER - Can claim anything that comes in
       await looksRareToken.connect(admin).transfer(vestingContract.address, "100");
       tx = await vestingContract.connect(admin).unlockLooksRareToken();
-      expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs("100");
+      await expect(tx).to.emit(vestingContract, "TokensUnlocked").withArgs("100");
     });
 
     it("Cannot withdraw LOOKS using standard withdraw functions", async () => {

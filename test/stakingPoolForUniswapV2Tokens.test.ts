@@ -84,7 +84,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
       await looksRareToken.connect(admin).transfer(stakingPoolForUniswapV2Tokens.address, parseEther("4000"));
 
       let tx = await stakingPoolForUniswapV2Tokens.connect(user1).deposit(parseEther("10"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Deposit")
         .withArgs(user1.address, parseEther("10"), parseEther("0"));
 
@@ -92,20 +92,20 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // (110 * 10 * 100) / 410 = 268.29268292673
       tx = await stakingPoolForUniswapV2Tokens.connect(user1).deposit(parseEther("10"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Deposit")
         .withArgs(user1.address, parseEther("10"), parseEther("268.29268292673"));
     });
 
     it("User can deposit/withdraw/deposit before the start", async () => {
       let tx = await stakingPoolForUniswapV2Tokens.connect(user1).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user1.address, parseEther("100"), parseEther("0"));
 
       tx = await stakingPoolForUniswapV2Tokens.connect(user1).deposit(parseEther("100"));
-      expect(tx)
-        .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
+      await expect(tx)
+        .to.emit(stakingPoolForUniswapV2Tokens, "Deposit")
         .withArgs(user1.address, parseEther("100"), parseEther("0"));
     });
 
@@ -116,37 +116,37 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // 20 / 4 = 5
       let tx = await stakingPoolForUniswapV2Tokens.connect(user1).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user1.address, parseEther("100"), parseEther("2.5"));
 
       // 5 + 10 / 3 = 5.8333333333
       tx = await stakingPoolForUniswapV2Tokens.connect(user2).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user2.address, parseEther("100"), parseEther("5.8333333333"));
 
       // 5.8333333333 + 10 / 2 = 10.8333333333
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user3.address, parseEther("100"), parseEther("10.8333333333"));
 
       // 10.8333333333 + 10 / 1 = 20.8333333333
       tx = await stakingPoolForUniswapV2Tokens.connect(user4).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user4.address, parseEther("100"), parseEther("20.8333333333"));
 
       // New deposit kicks in (from user1)
       tx = await stakingPoolForUniswapV2Tokens.connect(user1).deposit(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Deposit")
         .withArgs(user1.address, parseEther("100"), parseEther("0"));
 
       // User1 collects the entire block reward
       tx = await stakingPoolForUniswapV2Tokens.connect(user1).deposit(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Deposit")
         .withArgs(user1.address, parseEther("100"), parseEther("10"));
     });
@@ -158,7 +158,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // 10 * 10 / 4 = 25
       let tx = await stakingPoolForUniswapV2Tokens.connect(user1).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user1.address, parseEther("100"), parseEther("25"));
 
@@ -168,13 +168,13 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // 25 + 90 * 10 / 3 = 325
       tx = await stakingPoolForUniswapV2Tokens.connect(user2).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user2.address, parseEther("100"), parseEther("325"));
 
       // 325 + 10 / 2 = 330
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).harvest();
-      expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "Harvest").withArgs(user3.address, parseEther("330"));
+      await expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "Harvest").withArgs(user3.address, parseEther("330"));
 
       // 50 * 10 = 500 // Advance to startBlock + 149
       await looksRareToken.connect(admin).transfer(stakingPoolForUniswapV2Tokens.address, parseEther("500"));
@@ -186,7 +186,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
       tx = await stakingPoolForUniswapV2Tokens
         .connect(admin)
         .updateRewardPerBlockAndEndBlock(parseEther("5"), newEndBlock);
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "NewRewardPerBlockAndEndBlock")
         .withArgs(parseEther("5"), newEndBlock);
 
@@ -199,7 +199,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // 49 * 5 / 2 + 10 * 50 / 2 = 120 + 250 = 370
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).harvest();
-      expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "Harvest").withArgs(user3.address, parseEther("370"));
+      await expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "Harvest").withArgs(user3.address, parseEther("370"));
 
       // 500 // Advance to endBlock
       await looksRareToken.connect(admin).transfer(stakingPoolForUniswapV2Tokens.address, parseEther("500"));
@@ -209,7 +209,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
       assert.deepEqual(await stakingPoolForUniswapV2Tokens.calculatePendingRewards(user3.address), parseEther("250"));
 
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user3.address, parseEther("100"), parseEther("250"));
 
@@ -219,13 +219,13 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // User4 withdraws 75 LP tokens, gets the entire harvested amount (950 LOOKS)
       tx = await stakingPoolForUniswapV2Tokens.connect(user4).withdraw(parseEther("75"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user4.address, parseEther("75"), parseEther("950"));
 
       // User4 withdraws the remaining, nothing is harvested since rewards have stopped
       tx = await stakingPoolForUniswapV2Tokens.connect(user4).withdraw(parseEther("25"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user4.address, parseEther("25"), parseEther("0"));
 
@@ -243,7 +243,9 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // 10 * 10 / 4 = 25 are given up by user1
       let tx = await stakingPoolForUniswapV2Tokens.connect(user1).emergencyWithdraw();
-      expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "EmergencyWithdraw").withArgs(user1.address, parseEther("100"));
+      await expect(tx)
+        .to.emit(stakingPoolForUniswapV2Tokens, "EmergencyWithdraw")
+        .withArgs(user1.address, parseEther("100"));
 
       // Admin unpauses
       await stakingPoolForUniswapV2Tokens.unpause();
@@ -254,13 +256,13 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       //  100 * 10 / 3 = 333.3333333333 (precision is 10e12)
       tx = await stakingPoolForUniswapV2Tokens.connect(user2).withdraw(parseEther("100"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user2.address, parseEther("100"), parseEther("333.3333333333"));
 
       // 333.3333333333 + 10 / 2 = 338.3333333333
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).harvest();
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Harvest")
         .withArgs(user3.address, parseEther("338.3333333333"));
 
@@ -275,7 +277,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
         parseEther("5").toString(),
         newEndBlock.toString()
       );
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "NewRewardPerBlockAndEndBlock")
         .withArgs(parseEther("5"), newEndBlock);
 
@@ -288,7 +290,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // 49 * 5 / 2 + 10 * 50 / 2 = 120 + 250 = 370
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).harvest();
-      expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "Harvest").withArgs(user3.address, parseEther("370"));
+      await expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "Harvest").withArgs(user3.address, parseEther("370"));
 
       // 100 * 5 = 500 // Advance to newEndBlock
       await looksRareToken.connect(admin).transfer(stakingPoolForUniswapV2Tokens.address, parseEther("500"));
@@ -309,7 +311,9 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // User3 decides to call emergency withdraw and gives up 250 tokens
       tx = await stakingPoolForUniswapV2Tokens.connect(user3).emergencyWithdraw();
-      expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "EmergencyWithdraw").withArgs(user3.address, parseEther("100"));
+      await expect(tx)
+        .to.emit(stakingPoolForUniswapV2Tokens, "EmergencyWithdraw")
+        .withArgs(user3.address, parseEther("100"));
 
       // User4 gets the rewards from user3 (250 tokens in addition to before)
       // 958.3333333333 + 250 = 1208.3333333333
@@ -320,13 +324,13 @@ describe("StakingPoolForUniswapV2Tokens", () => {
 
       // User4 withdraws 75 LP tokens, gets the entire harvested amount
       tx = await stakingPoolForUniswapV2Tokens.connect(user4).withdraw(parseEther("75"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user4.address, parseEther("75"), parseEther("1208.3333333333"));
 
       // User4 withdraws the remaining, nothing is harvested since rewards have stopped
       tx = await stakingPoolForUniswapV2Tokens.connect(user4).withdraw(parseEther("25"));
-      expect(tx)
+      await expect(tx)
         .to.emit(stakingPoolForUniswapV2Tokens, "Withdraw")
         .withArgs(user4.address, parseEther("25"), parseEther("0"));
 
@@ -340,7 +344,7 @@ describe("StakingPoolForUniswapV2Tokens", () => {
       await looksRareToken.connect(admin).transfer(stakingPoolForUniswapV2Tokens.address, parseEther("10"));
 
       const tx = await stakingPoolForUniswapV2Tokens.connect(admin).adminRewardWithdraw(parseEther("10"));
-      expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "AdminRewardWithdraw").withArgs(parseEther("10"));
+      await expect(tx).to.emit(stakingPoolForUniswapV2Tokens, "AdminRewardWithdraw").withArgs(parseEther("10"));
     });
 
     it("Owner functions revert as expected", async () => {

@@ -47,21 +47,21 @@ describe("TokenSplitter", () => {
       assert.deepEqual(await tokenSplitter.calculatePendingRewards(team.address), parseEther("200"));
 
       let tx = await tokenSplitter.connect(team).releaseTokens(team.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("200"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("200"));
       assert.deepEqual((await tokenSplitter.accountInfo(team.address))[1], parseEther("200"));
 
       // Admin adds 3000 LOOKS
       await looksRareToken.connect(admin).transfer(tokenSplitter.address, parseEther("3000"));
 
       tx = await tokenSplitter.connect(team).releaseTokens(team.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("600"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("600"));
       assert.deepEqual((await tokenSplitter.accountInfo(team.address))[1], parseEther("800"));
 
       tx = await tokenSplitter.connect(treasury).releaseTokens(treasury.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(treasury.address, parseEther("400"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(treasury.address, parseEther("400"));
 
       tx = await tokenSplitter.connect(tradingRewards).releaseTokens(tradingRewards.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(tradingRewards.address, parseEther("2800"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(tradingRewards.address, parseEther("2800"));
 
       assert.deepEqual(await looksRareToken.balanceOf(tokenSplitter.address), constants.Zero);
     });
@@ -81,7 +81,7 @@ describe("TokenSplitter", () => {
       await looksRareToken.connect(admin).transfer(tokenSplitter.address, parseEther("3000"));
 
       const tx = await tokenSplitter.connect(team).releaseTokens(team.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("600"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("600"));
 
       // Cannot transfer again (if no more rewards)
       await expect(tokenSplitter.connect(team).releaseTokens(team.address)).to.be.revertedWith(
@@ -94,7 +94,7 @@ describe("TokenSplitter", () => {
       await looksRareToken.connect(admin).transfer(tokenSplitter.address, parseEther("3000"));
 
       const tx = await tokenSplitter.connect(randomUser).releaseTokens(team.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("600"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(team.address, parseEther("600"));
       assert.deepEqual(await looksRareToken.balanceOf(randomUser.address), constants.Zero);
     });
 
@@ -103,10 +103,10 @@ describe("TokenSplitter", () => {
       await looksRareToken.connect(admin).transfer(tokenSplitter.address, parseEther("3000"));
 
       let tx = await tokenSplitter.connect(admin).updateSharesOwner(newTreasury.address, treasury.address);
-      expect(tx).to.emit(tokenSplitter, "NewSharesOwner").withArgs(treasury.address, newTreasury.address);
+      await expect(tx).to.emit(tokenSplitter, "NewSharesOwner").withArgs(treasury.address, newTreasury.address);
 
       tx = await tokenSplitter.connect(newTreasury).releaseTokens(newTreasury.address);
-      expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(newTreasury.address, parseEther("300"));
+      await expect(tx).to.emit(tokenSplitter, "TokensTransferred").withArgs(newTreasury.address, parseEther("300"));
       assert.deepEqual(await looksRareToken.balanceOf(newTreasury.address), parseEther("300"));
 
       await expect(tokenSplitter.connect(treasury).releaseTokens(treasury.address)).to.be.revertedWith(
