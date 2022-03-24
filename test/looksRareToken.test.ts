@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -19,18 +19,37 @@ describe("LooksRareToken", () => {
     cap = parseEther("1000000000");
 
     const LooksRareToken = await ethers.getContractFactory("LooksRareToken");
-
     looksRareToken = await LooksRareToken.deploy(admin.address, premintAmount, cap);
     await looksRareToken.deployed();
   });
 
   describe("#1 - Regular user/owner interactions", async () => {
+    it("Post-deployment values are correct", async () => {
+      assert.deepEqual(await looksRareToken.SUPPLY_CAP(), cap);
+      assert.deepEqual(await looksRareToken.totalSupply(), premintAmount);
+    });
+
     it("Owner can mint", async () => {
       const valueToMint = parseEther("100000");
-
       await expect(looksRareToken.connect(admin).mint(admin.address, valueToMint))
         .to.emit(looksRareToken, "Transfer")
         .withArgs(constants.AddressZero, admin.address, valueToMint);
+    });
+
+    it("Owner cannot mint more than cap", async () => {
+      let valueToMint = cap.sub(premintAmount);
+      await expect(looksRareToken.connect(admin).mint(admin.address, valueToMint))
+        .to.emit(looksRareToken, "Transfer")
+        .withArgs(constants.AddressZero, admin.address, valueToMint);
+
+      assert.deepEqual(await looksRareToken.totalSupply(), cap);
+
+      valueToMint = BigNumber.from("1");
+      await expect(looksRareToken.connect(admin).mint(admin.address, valueToMint)).not.to.emit(
+        looksRareToken,
+        "Transfer"
+      );
+      assert.deepEqual(await looksRareToken.totalSupply(), cap);
     });
   });
 
@@ -43,9 +62,7 @@ describe("LooksRareToken", () => {
 
     it("Cannot deploy if cap is greater than premint amount", async () => {
       const wrongCap = BigNumber.from("0");
-
       const LooksRareToken = await ethers.getContractFactory("LooksRareToken");
-
       await expect(LooksRareToken.deploy(admin.address, premintAmount, wrongCap)).to.be.revertedWith(
         "LOOKS: Premint amount is greater than cap"
       );
