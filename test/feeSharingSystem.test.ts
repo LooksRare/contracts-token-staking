@@ -124,10 +124,8 @@ describe("FeeSharingSystem", () => {
 
       // No reward
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), constants.Zero);
-
       assert.deepEqual(await feeSharingSystem.totalShares(), parseEther("400"));
       assert.deepEqual(await feeSharingSystem.lastRewardBlock(), await feeSharingSystem.periodEndBlock());
-
       assert.deepEqual(await tokenDistributor.accTokenPerShare(), parseEther("0"));
 
       await advanceBlockTo(BigNumber.from(await tokenDistributor.START_BLOCK()).add(constants.One));
@@ -135,15 +133,15 @@ describe("FeeSharingSystem", () => {
       // 30 LOOKS per block / 4 = 7.5
       // New exchange rate is 107.5 for 100 LOOKS
       assert.deepEqual(await feeSharingSystem.calculateSharesValueInLOOKS(user1.address), parseEther("107.5"));
-
       assert.deepEqual(await feeSharingSystem.calculateSharePriceInLOOKS(), parseEther("1.075"));
 
       let tx = await feeSharingSystem.connect(user1).withdrawAll(true);
 
-      expect(tx).to.emit(feeSharingSystem, "Withdraw").withArgs(user1.address, parseEther("115"), parseEther("0"));
+      await expect(tx)
+        .to.emit(feeSharingSystem, "Withdraw")
+        .withArgs(user1.address, parseEther("115"), parseEther("0"));
 
       let totalAmountStaked = (await tokenDistributor.userInfo(feeSharingSystem.address))[0];
-
       let expectedAmountToReceive = await tokenDistributor.calculatePendingRewards(feeSharingSystem.address);
 
       let userShares = (await feeSharingSystem.userInfo(user2.address))[0];
@@ -159,7 +157,6 @@ describe("FeeSharingSystem", () => {
       await advanceBlockTo(BigNumber.from(await tokenDistributor.START_BLOCK()).add("3"));
 
       totalAmountStaked = (await tokenDistributor.userInfo(feeSharingSystem.address))[0];
-
       expectedAmountToReceive = await tokenDistributor.calculatePendingRewards(feeSharingSystem.address);
 
       userShares = (await feeSharingSystem.userInfo(user2.address))[0];
@@ -176,15 +173,11 @@ describe("FeeSharingSystem", () => {
 
       // 115 + 60 LOOKS / 3 = 135
       tx = await feeSharingSystem.connect(user2).withdrawAll(true);
-
       expectedValue = parseEther("134.99999999997");
-
-      expect(tx).to.emit(feeSharingSystem, "Withdraw").withArgs(user2.address, expectedValue, parseEther("0"));
+      await expect(tx).to.emit(feeSharingSystem, "Withdraw").withArgs(user2.address, expectedValue, parseEther("0"));
 
       totalAmountStaked = (await tokenDistributor.userInfo(feeSharingSystem.address))[0];
-
       expectedAmountToReceive = await tokenDistributor.calculatePendingRewards(feeSharingSystem.address);
-
       userShares = (await feeSharingSystem.userInfo(user3.address))[0];
       totalShares = await feeSharingSystem.totalShares();
 
@@ -221,8 +214,8 @@ describe("FeeSharingSystem", () => {
 
       for (const user of [user1, user2, user3, user4]) {
         const tx = await feeSharingSystem.connect(user).withdrawAll(true);
-        expect(tx).to.emit(tokenDistributor, "Withdraw");
-        expect(tx).to.emit(feeSharingSystem, "Withdraw");
+        await expect(tx).to.emit(tokenDistributor, "Withdraw");
+        await expect(tx).to.emit(feeSharingSystem, "Withdraw");
       }
 
       // 500 / 4 = 125 WETH per user
@@ -240,7 +233,7 @@ describe("FeeSharingSystem", () => {
       // 1. Rewards are updated for the first phase
       let tx = await feeSharingSetter.connect(admin).updateRewards();
 
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
+      await expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
 
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("10"));
       assert.deepEqual(await feeSharingSystem.totalShares(), parseEther("400"));
@@ -253,9 +246,10 @@ describe("FeeSharingSystem", () => {
       // User1: 125 // User2: 125 // User3: 125 // User4: 125
       tx = await feeSharingSystem.connect(user1).deposit(parseEther("10"), true);
 
-      expect(tx).to.emit(tokenDistributor, "Deposit");
-
-      expect(tx).to.emit(tokenDistributor, "Deposit").withArgs(user1.address, parseEther("10"), parseEther("125"));
+      await expect(tx).to.emit(tokenDistributor, "Deposit");
+      await expect(tx)
+        .to.emit(tokenDistributor, "Deposit")
+        .withArgs(feeSharingSystem.address, parseEther("10"), parseEther("0"));
     });
 
     it("Owner can adjust the block schedule", async () => {
@@ -266,19 +260,15 @@ describe("FeeSharingSystem", () => {
 
       // 1. Rewards are updated for the first phase
       let tx = await feeSharingSetter.connect(admin).updateRewards();
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
+      await expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
 
       tx = await feeSharingSetter.setNewRewardDurationInBlocks("100");
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardDurationInBlocks").withArgs("100");
-
+      await expect(tx).to.emit(feeSharingSetter, "NewRewardDurationInBlocks").withArgs("100");
       assert.deepEqual(await feeSharingSetter.rewardDurationInBlocks(), BigNumber.from("50"));
       assert.deepEqual(await feeSharingSetter.nextRewardDurationInBlocks(), BigNumber.from("100"));
 
       // Advance to end of the period
       const periodEndBlock = await feeSharingSystem.periodEndBlock();
-
       await advanceBlockTo(BigNumber.from(periodEndBlock));
 
       // Transfer 800 WETH token to the contract (100 blocks with 8 WETH/block)
@@ -286,9 +276,7 @@ describe("FeeSharingSystem", () => {
 
       // 2. Rewards are updated for the second phase
       tx = await feeSharingSetter.connect(admin).updateRewards();
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("100", parseEther("8"), parseEther("800"));
-
+      await expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("100", parseEther("8"), parseEther("800"));
       assert.deepEqual(await feeSharingSetter.rewardDurationInBlocks(), BigNumber.from("100"));
     });
 
@@ -301,11 +289,8 @@ describe("FeeSharingSystem", () => {
 
       // 1. Rewards are updated for the first phase
       let tx = await feeSharingSetter.connect(admin).updateRewards();
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
-
+      await expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("10"));
-
       assert.deepEqual(await feeSharingSystem.totalShares(), parseEther("400"));
 
       // Advance to end of the period
@@ -317,17 +302,15 @@ describe("FeeSharingSystem", () => {
       // User1: 125 // User2: 125 // User3: 125 // User4: 125
       tx = await feeSharingSystem.connect(user1).withdrawAll(true);
       expect(tx).to.emit(tokenDistributor, "Withdraw");
-
       // 52 blocks // 30 / 4 * 52 = 390 LOOKS
       expect(tx).to.emit(feeSharingSystem, "Withdraw").withArgs(user1.address, parseEther("490"), parseEther("125"));
-
       tx = await feeSharingSystem.connect(user2).withdrawAll(true);
       expect(tx).to.emit(tokenDistributor, "Withdraw");
 
       // 390 + 30 / 3 = 399.99999999985
       expect(tx)
         .to.emit(feeSharingSystem, "Withdraw")
-        .withArgs(user2.address, parseEther("499.99999999985"), parseEther("125"));
+        .withArgs(user2.address, parseEther("499.99999999985"), parseEther("125"), parseEther("0"));
 
       // Transfer 5000 WETH token to the contract (50 blocks with 100 WETH/block)
       let rewardAdded = parseEther("5000");
@@ -335,41 +318,38 @@ describe("FeeSharingSystem", () => {
 
       // 2. Rewards are updated for the second phase
       tx = await feeSharingSetter.connect(admin).updateRewards();
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), rewardAdded);
-
+      await expect(tx)
+        .to.emit(feeSharingSystem, "NewRewardPeriod")
+        .withArgs(BigNumber.from("50"), parseEther("100"), rewardAdded);
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("100"));
 
       await advanceBlockTo(BigNumber.from(await feeSharingSystem.periodEndBlock()));
 
       // User1: 0(125) // User2: 0(125) // User3: 2625 // User4: 2625
       tx = await feeSharingSystem.connect(user3).harvest();
-
-      expect(tx).to.emit(feeSharingSystem, "Harvest").withArgs(user3.address, parseEther("2625"));
+      await expect(tx).to.emit(feeSharingSystem, "Harvest").withArgs(user3.address, parseEther("2625"));
 
       // #3 - User launches the third phase of fee sharing
       // Transfer 10,000 WETH token to the contract (50 blocks with 400 WETH/block)
       rewardAdded = parseEther("10000");
-
       await rewardToken.connect(admin).transfer(feeSharingSetter.address, rewardAdded);
 
       tx = await feeSharingSetter.connect(admin).updateRewards();
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("200"), parseEther("10000"));
+      await expect(tx)
+        .to.emit(feeSharingSystem, "NewRewardPeriod")
+        .withArgs("50", parseEther("200"), parseEther("10000"));
 
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("200"));
 
       const halfPeriodEndBlock = BigNumber.from(await feeSharingSystem.periodEndBlock()).sub("26");
-
       await advanceBlockTo(halfPeriodEndBlock);
 
       // User1: 0(125) // User2: 0(125) // User3: 2500(7625) // User4: 7625
       // user3.address withdraws the entire amount
       tx = await feeSharingSystem.connect(user3).withdrawAll(true);
 
-      expect(tx).to.emit(tokenDistributor, "Withdraw");
-
-      expect(tx)
+      await expect(tx).to.emit(tokenDistributor, "Withdraw");
+      await expect(tx)
         .to.emit(feeSharingSystem, "Withdraw")
         .withArgs(user3.address, parseEther("1452.49999999956425"), parseEther("2500"));
 
@@ -381,16 +361,14 @@ describe("FeeSharingSystem", () => {
       const userShares = result[0];
 
       tx = await feeSharingSystem.connect(user4).harvest();
-
-      expect(tx).to.emit(feeSharingSystem, "Harvest").withArgs(user4.address, parseEther("10125"));
+      await expect(tx).to.emit(feeSharingSystem, "Harvest").withArgs(user4.address, parseEther("10125"));
 
       tx = await feeSharingSystem.connect(user4).withdraw(userShares, false);
-
-      expect(tx)
+      await expect(tx)
         .to.emit(tokenDistributor, "Withdraw")
-        .withArgs(feeSharingSystem.address, parseEther("1857.499999997238228290"));
+        .withArgs(feeSharingSystem.address, parseEther("1857.499999997238228290"), parseEther("0"));
 
-      expect(tx)
+      await expect(tx)
         .to.emit(feeSharingSystem, "Withdraw")
         .withArgs(user4.address, parseEther("1857.499999997238228290"), parseEther("0"));
 
@@ -404,39 +382,33 @@ describe("FeeSharingSystem", () => {
       const stakingAddresses = [feeSharingRecipient1.address, feeSharingRecipient2.address];
 
       let tx = await feeSharingSetter.connect(admin).addFeeStakingAddresses(stakingAddresses);
-
-      expect(tx).to.emit(feeSharingSetter, "FeeStakingAddressesAdded").withArgs(stakingAddresses);
-
+      await expect(tx).to.emit(feeSharingSetter, "FeeStakingAddressesAdded").withArgs(stakingAddresses);
       assert.includeOrderedMembers(await feeSharingSetter.viewFeeStakingAddresses(), stakingAddresses);
 
       await looksRareToken.connect(admin).transfer(feeSharingRecipient1.address, parseEther("200"));
-
       await looksRareToken.connect(admin).transfer(feeSharingRecipient2.address, parseEther("200"));
 
       // 500 WETH exists in the contract
       tx = await feeSharingSetter.connect(admin).updateRewards();
 
       // Rewards are only 250 WETH since half goes to passive stakers
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("5"), parseEther("250"));
-
+      await expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("5"), parseEther("250"));
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("5"));
       assert.deepEqual(await feeSharingSystem.totalShares(), parseEther("400"));
 
       // Advance to end of the period
       const periodEndBlock = await feeSharingSystem.periodEndBlock();
-
       await advanceBlockTo(periodEndBlock);
 
       // User1: 67.5 // User2: 67.5 // User3: 67.5 // User4: 67.5
       for (const user of [user1, user2]) {
         tx = await feeSharingSystem.connect(user).withdrawAll(true);
-        expect(tx).to.emit(tokenDistributor, "Withdraw");
-        expect(tx).to.emit(feeSharingSystem, "Withdraw");
+        await expect(tx).to.emit(tokenDistributor, "Withdraw");
+        await expect(tx).to.emit(feeSharingSystem, "Withdraw");
       }
 
       tx = await feeSharingSetter.connect(admin).removeFeeStakingAddresses([feeSharingRecipient1.address]);
-
-      expect(tx).to.emit(feeSharingSystem, "FeeStakingAddressesRemoved").withArgs([feeSharingRecipient1.address]);
+      await expect(tx).to.emit(feeSharingSetter, "FeeStakingAddressesRemoved").withArgs([feeSharingRecipient1.address]);
 
       // Transfer 1000 WETH token to the contract (50 blocks with 20 WETH/block)
       const rewardAdded = parseEther("1000");
@@ -444,9 +416,7 @@ describe("FeeSharingSystem", () => {
 
       // 2. Rewards are updated for the second phase
       tx = await feeSharingSetter.connect(admin).updateRewards();
-
-      expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
-
+      await expect(tx).to.emit(feeSharingSystem, "NewRewardPeriod").withArgs("50", parseEther("10"), parseEther("500"));
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("10"));
 
       // 250 (reward round 1) + 500 (reward round2) - 125 (amount withdrawn by users 1/2) = 625
@@ -467,20 +437,18 @@ describe("FeeSharingSystem", () => {
       await rewardToken.connect(admin).transfer(rewardConvertor.address, parseEther("10"));
 
       let tx = await feeSharingSetter.connect(admin).setRewardConvertor(rewardConvertor.address);
-
-      expect(tx).to.emit(feeSharingSetter, "NewRewardConvertor").withArgs(rewardConvertor.address);
+      await expect(tx).to.emit(feeSharingSetter, "NewRewardConvertor").withArgs(rewardConvertor.address);
 
       // Admin can call
       tx = await feeSharingSetter
         .connect(admin)
         .convertCurrencyToRewardToken(randomToken.address, defaultAbiCoder.encode([], []));
 
-      expect(tx)
+      await expect(tx)
         .to.emit(feeSharingSetter, "ConversionToRewardToken")
         .withArgs(randomToken.address, parseEther("100"), parseEther("10"));
 
       await randomToken.connect(admin).mint(feeSharingSystem.address, parseEther("500"));
-
       await rewardToken.connect(admin).transfer(rewardConvertor.address, parseEther("30"));
 
       // Admin cannot convert if nothing to convert
@@ -513,20 +481,18 @@ describe("FeeSharingSystem", () => {
       let tx = await feeSharingSystem.connect(admin).updateRewards(parseEther("500"), "50");
 
       assert.deepEqual(await feeSharingSystem.rewardPerTokenStored(), constants.Zero);
-
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("10"));
-
       assert.deepEqual(await feeSharingSystem.totalShares(), parseEther("400"));
 
       await advanceBlockTo(BigNumber.from(await tokenDistributor.START_BLOCK()).add("24"));
 
       tx = await feeSharingSystem.connect(user1).withdrawAll(true);
-
-      expect(tx).to.emit(feeSharingSystem, "Withdraw").withArgs(user1.address, parseEther("287.5"), parseEther("60"));
+      await expect(tx)
+        .to.emit(feeSharingSystem, "Withdraw")
+        .withArgs(user1.address, parseEther("287.5"), parseEther("60"));
 
       assert.deepEqual(await feeSharingSystem.rewardPerTokenStored(), parseEther("0.6"));
       assert.deepEqual(await feeSharingSystem.currentRewardPerBlock(), parseEther("10"));
-
       assert.deepEqual(await feeSharingSystem.totalShares(), parseEther("300"));
 
       const userInfo = await feeSharingSystem.userInfo(user1.address);
@@ -599,12 +565,10 @@ describe("FeeSharingSystem", () => {
       const maximumDuration = await feeSharingSetter.MAX_REWARD_DURATION_IN_BLOCKS();
 
       let tx = await feeSharingSetter.connect(admin).setNewRewardDurationInBlocks(minimumDuration);
-
-      expect(tx).to.emit(feeSharingSetter, "NewRewardDurationInBlocks").withArgs(minimumDuration);
+      await expect(tx).to.emit(feeSharingSetter, "NewRewardDurationInBlocks").withArgs(minimumDuration);
 
       tx = await feeSharingSetter.connect(admin).setNewRewardDurationInBlocks(maximumDuration);
-
-      expect(tx).to.emit(feeSharingSetter, "NewRewardDurationInBlocks").withArgs(maximumDuration);
+      await expect(tx).to.emit(feeSharingSetter, "NewRewardDurationInBlocks").withArgs(maximumDuration);
 
       await expect(
         feeSharingSetter
@@ -629,9 +593,7 @@ describe("FeeSharingSystem", () => {
       ).to.be.revertedWith("Owner: New owner cannot be null address");
 
       const tx = await feeSharingSetter.connect(admin).transferOwnershipOfFeeSharingSystem(admin.address);
-
-      expect(tx).to.emit(feeSharingSetter, "NewFeeSharingSystemOwner").withArgs(admin.address);
-
+      await expect(tx).to.emit(feeSharingSetter, "NewFeeSharingSystemOwner").withArgs(admin.address);
       assert.equal(await feeSharingSystem.owner(), admin.address);
     });
 
