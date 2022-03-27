@@ -67,7 +67,7 @@ contract AggregatorFeeSharingWithUniswapV3 is Ownable, Pausable, ReentrancyGuard
     event HarvestStart();
     event HarvestStop();
     event NewHarvestBufferBlocks(uint256 harvestBufferBlocks);
-    event NewMaximumPriceOfLOOKSInWETH(uint256 maxPriceLOOKSInWETH);
+    event NewMaximumPriceLOOKSInWETH(uint256 maxPriceLOOKSInWETH);
     event NewThresholdAmount(uint256 thresholdAmount);
     event NewTradingFeeUniswapV3(uint24 tradingFeeUniswapV3);
     event Withdraw(address indexed user, uint256 amount);
@@ -217,7 +217,7 @@ contract AggregatorFeeSharingWithUniswapV3 is Ownable, Pausable, ReentrancyGuard
     function updateMaxPriceOfLOOKSInWETH(uint256 _newMaxPriceLOOKSInWETH) external onlyOwner {
         maxPriceLOOKSInWETH = _newMaxPriceLOOKSInWETH;
 
-        emit NewMaximumPriceOfLOOKSInWETH(_newMaxPriceLOOKSInWETH);
+        emit NewMaximumPriceLOOKSInWETH(_newMaxPriceLOOKSInWETH);
     }
 
     /**

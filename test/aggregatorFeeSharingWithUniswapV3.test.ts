@@ -471,8 +471,8 @@ describe("AggregatorFeeSharing", () => {
       // 1 LOOKS is at most equal to 0.01 WETH
       // 1 WETH is at least equal to 100 LOOKS
       const tx = await aggregator.connect(admin).updateMaxPriceOfLOOKSInWETH(parseEther("0.01"));
-      await expect(tx).to.emit(aggregator, "NewMaximumPriceOfLOOKSInWETH").withArgs(parseEther("0.01"));
-      assert.deepEqual(await aggregator.maxPriceOfLOOKSInWETH(), parseEther("0.01"));
+      await expect(tx).to.emit(aggregator, "NewMaximumPriceLOOKSInWETH").withArgs(parseEther("0.01"));
+      assert.deepEqual(await aggregator.maxPriceLOOKSInWETH(), parseEther("0.01"));
     });
 
     it("Only owner can call functions for onlyOwner", async () => {
