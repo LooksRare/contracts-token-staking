@@ -110,6 +110,7 @@ describe("AggregatorFeeSharing", () => {
 
     const MockUniswapV3Router = await ethers.getContractFactory("MockUniswapV3Router");
     uniswapRouter = await MockUniswapV3Router.deploy();
+    // 1 WETH is sold for 2 LOOKS
     await uniswapRouter.connect(admin).setMultiplier("20000");
 
     // Transfer 2,250 LOOKS to mock router
@@ -117,6 +118,7 @@ describe("AggregatorFeeSharing", () => {
 
     const AggregatorFeeSharingWithUniswapV3 = await ethers.getContractFactory("AggregatorFeeSharingWithUniswapV3");
     aggregator = await AggregatorFeeSharingWithUniswapV3.deploy(feeSharingSystem.address, uniswapRouter.address);
+    await aggregator.deployed();
   });
 
   describe("#1 - Regular user/admin interactions", async () => {
@@ -286,7 +288,7 @@ describe("AggregatorFeeSharing", () => {
     it("Harvest doesn't trigger reinvesting if amount received is less than 1 LOOKS", async () => {
       const [user1, user2, user3] = [accounts[1], accounts[2], accounts[3]];
       await setupUsers(feeSharingSystem, looksRareToken, aggregator, admin, [user1, user2, user3]);
-      // 1 WETH --> 1 LOOKS
+      // 1 WETH is sold for 1 LOOKS
       await uniswapRouter.setMultiplier("10000");
       await aggregator.connect(admin).updateThresholdAmount(parseEther("0.999"));
       await rewardToken.connect(admin).transfer(aggregator.address, parseEther("0.999"));
@@ -296,6 +298,34 @@ describe("AggregatorFeeSharing", () => {
       await expect(tx).to.emit(aggregator, "ConversionToLOOKS").withArgs(parseEther("0.999"), parseEther("0.999"));
       // Amount is lower than threshold to trigger the deposit
       await expect(tx).not.to.emit(feeSharingSystem, "Deposit");
+    });
+
+    it("Slippage protections work as expected", async () => {
+      const [user1, user2, user3] = [accounts[1], accounts[2], accounts[3]];
+      await setupUsers(feeSharingSystem, looksRareToken, aggregator, admin, [user1, user2, user3]);
+
+      // 1 WETH must be sold at least for 100 LOOKS
+      await aggregator.connect(admin).updateMaxPriceOfLOOKSInWETH(parseEther("0.01"));
+
+      // 1 WETH is sold for 100 LOOKS
+      await uniswapRouter.setMultiplier("1000000");
+
+      // Transfer 1 LOOKS
+      await rewardToken.connect(admin).transfer(aggregator.address, parseEther("1"));
+      let tx = await aggregator.connect(admin).harvestAndSellAndCompound();
+
+      // Amount is same as threshold... it doesn't trigger the error
+      await expect(tx).not.to.emit(uniswapRouter, "SlippageError");
+
+      // 1 WETH is now sold for 99.999 LOOKS
+      await uniswapRouter.setMultiplier("999999");
+
+      // Transfer 1 LOOKS
+      await rewardToken.connect(admin).transfer(aggregator.address, parseEther("1"));
+      tx = await aggregator.connect(admin).harvestAndSellAndCompound();
+
+      // Amount is lower than threshold to trigger the deposit
+      await expect(tx).to.emit(uniswapRouter, "SlippageError");
     });
   });
 
@@ -438,11 +468,11 @@ describe("AggregatorFeeSharing", () => {
     });
 
     it("Owner can update minPriceLOOKSInWETH", async () => {
-      // 1 LOOKS is at least equal to 0.01 WETH
-      // 1 WETH is at most equal to 100 LOOKS
-      const tx = await aggregator.connect(admin).updateMinPriceOfLOOKSInWETH(parseEther("0.01"));
-      await expect(tx).to.emit(aggregator, "NewMinimumPriceOfLOOKSInWETH").withArgs(parseEther("0.01"));
-      assert.deepEqual(await aggregator.minPriceLOOKSInWETH(), parseEther("0.01"));
+      // 1 LOOKS is at most equal to 0.01 WETH
+      // 1 WETH is at least equal to 100 LOOKS
+      const tx = await aggregator.connect(admin).updateMaxPriceOfLOOKSInWETH(parseEther("0.01"));
+      await expect(tx).to.emit(aggregator, "NewMaximumPriceOfLOOKSInWETH").withArgs(parseEther("0.01"));
+      assert.deepEqual(await aggregator.maxPriceOfLOOKSInWETH(), parseEther("0.01"));
     });
 
     it("Only owner can call functions for onlyOwner", async () => {
@@ -458,7 +488,7 @@ describe("AggregatorFeeSharing", () => {
       await expect(aggregator.connect(user1).updateThresholdAmount("10")).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
-      await expect(aggregator.connect(user1).updateMinPriceOfLOOKSInWETH(parseEther("0.01"))).to.be.revertedWith(
+      await expect(aggregator.connect(user1).updateMaxPriceOfLOOKSInWETH(parseEther("0.01"))).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
       await expect(aggregator.connect(user1).pause()).to.be.revertedWith("Ownable: caller is not the owner");

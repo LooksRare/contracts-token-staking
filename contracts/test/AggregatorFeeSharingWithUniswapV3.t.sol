@@ -89,8 +89,8 @@ contract AggregatorTest is DSTest, TestParameters, TestHelpers {
         aggregatorFeeSharingWithUniswapV3.updateThresholdAmount(_parseEtherWithFloating(5, 1));
         aggregatorFeeSharingWithUniswapV3.updateHarvestBufferBlocks(10);
 
-        // 7. Distribute LOOKS to user accounts (from the premint)
-        address[4] memory users = [address(1), address(2), address(3), address(4)];
+        // 7. Distribute LOOKS (from the premint) to user accounts
+        address[4] memory users = [user1, user2, user3, user4];
 
         for (uint256 i = 0; i < users.length; i++) {
             cheats.prank(_PREMINT_RECEIVER);
@@ -125,7 +125,7 @@ contract AggregatorTest is DSTest, TestParameters, TestHelpers {
         assertEq(aggregatorFeeSharingWithUniswapV3.calculateSharesValueInLOOKS(user1), _parseEther(0));
     }
 
-    function testDepositAndWithdrawSameBlock(uint8 x, uint16 numberBlocks) public asPrankedUser(user1) {
+    function testSameBlockDepositAndWithdraw(uint8 x, uint16 numberBlocks) public asPrankedUser(user1) {
         uint256 amountDeposit = _parseEther(x);
         cheats.assume(amountDeposit >= aggregatorFeeSharingWithUniswapV3.MINIMUM_DEPOSIT_LOOKS());
         cheats.roll(_START_BLOCK + uint256(numberBlocks));
@@ -134,5 +134,18 @@ contract AggregatorTest is DSTest, TestParameters, TestHelpers {
         uint256 currentBalanceUser1 = looksRareToken.balanceOf(user1);
         aggregatorFeeSharingWithUniswapV3.withdrawAll();
         assertEq(looksRareToken.balanceOf(user1), currentBalanceUser1 + amountDeposit);
+    }
+
+    function testSameBlockMultipleDeposits(uint8 x, uint16 numberBlocks) public {
+        uint256 amountDeposit = _parseEther(x);
+        cheats.assume(amountDeposit >= aggregatorFeeSharingWithUniswapV3.MINIMUM_DEPOSIT_LOOKS());
+        cheats.roll(_START_BLOCK + uint256(numberBlocks));
+
+        cheats.prank(user1);
+        aggregatorFeeSharingWithUniswapV3.deposit(amountDeposit);
+
+        cheats.prank(user2);
+        aggregatorFeeSharingWithUniswapV3.deposit(amountDeposit);
+        assertEq(aggregatorFeeSharingWithUniswapV3.userInfo(user1), aggregatorFeeSharingWithUniswapV3.userInfo(user2));
     }
 }
