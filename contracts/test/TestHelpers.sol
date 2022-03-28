@@ -2,8 +2,9 @@
 pragma solidity ^0.8.0;
 
 import {ICheatCodes} from "./ICheatCodes.sol";
+import {DSTest} from "../../lib/ds-test/src/test.sol";
 
-abstract contract TestHelpers {
+abstract contract TestHelpers is DSTest {
     ICheatCodes public cheats = ICheatCodes(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
     address public user1 = address(1);
@@ -20,6 +21,23 @@ abstract contract TestHelpers {
         cheats.startPrank(_user);
         _;
         cheats.stopPrank();
+    }
+
+    function assertQuasiEq(uint256 a, uint256 b) public {
+        require(a >= 1e18 || b >= 1e18, "Error: a & b must be > 1e18");
+
+        // 0.000001 % precision tolerance
+        uint256 PRECISION_LOSS = 1e9;
+
+        if (a == b) {
+            assertEq(a, b);
+        } else if (a > b) {
+            assertGt(a, b);
+            assertLt(a - PRECISION_LOSS, b);
+        } else if (a < b) {
+            assertGt(a, b - PRECISION_LOSS);
+            assertLt(a, b);
+        }
     }
 
     function _parseEther(uint256 value) internal pure returns (uint256) {
