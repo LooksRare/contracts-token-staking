@@ -2,10 +2,9 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import * as blockTraveller from "./helpers/block-traveller";
+import { advanceBlockTo } from "./helpers/block-traveller";
 
 const { parseEther } = utils;
-const { advanceBlockTo } = blockTraveller;
 
 describe("TokenDistributor", () => {
   let looksRareToken: Contract;

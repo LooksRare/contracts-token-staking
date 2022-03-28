@@ -57,3 +57,17 @@ export async function increaseTo(targetTime: BigNumber): Promise<void> {
 export async function latest(): Promise<number> {
   return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
 }
+
+/**
+ * Start automine
+ */
+export async function pauseAutomine(): Promise<void> {
+  await network.provider.send("evm_setAutomine", [false]);
+}
+
+/**
+ * Resume automine
+ */
+export async function resumeAutomine(): Promise<void> {
+  await network.provider.send("evm_setAutomine", [true]);
+}

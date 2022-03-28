@@ -307,7 +307,7 @@ describe("PrivateSaleWithFeeSharing", () => {
           .to.emit(privateSale, "Withdraw")
           .withArgs(user.address, BigNumber.from("1"), amountLOOKSForTier1);
 
-        if (user != firstTierUser1 && user != firstTierUser2) {
+        if (user !== firstTierUser1 && user !== firstTierUser2) {
           await expect(tx).to.emit(privateSale, "Harvest").withArgs(user.address, expectedHarvestAmountForTier1Step2);
         } else {
           await expect(tx).to.not.emit(privateSale, "Harvest");
@@ -320,7 +320,7 @@ describe("PrivateSaleWithFeeSharing", () => {
           .to.emit(privateSale, "Withdraw")
           .withArgs(user.address, BigNumber.from("2"), amountLOOKSForTier2);
 
-        if (user != secondTierUser1 && user != secondTierUser2) {
+        if (user !== secondTierUser1 && user !== secondTierUser2) {
           await expect(tx).to.emit(privateSale, "Harvest").withArgs(user.address, expectedHarvestAmountForTier2Step2);
         } else {
           await expect(tx).to.not.emit(privateSale, "Harvest");
@@ -333,7 +333,7 @@ describe("PrivateSaleWithFeeSharing", () => {
           .to.emit(privateSale, "Withdraw")
           .withArgs(user.address, BigNumber.from("3"), amountLOOKSForTier3);
 
-        if (user != thirdTierUser1 && user != thirdTierUser2) {
+        if (user !== thirdTierUser1 && user !== thirdTierUser2) {
           await expect(tx).to.emit(privateSale, "Harvest").withArgs(user.address, expectedHarvestAmountForTier3Step2);
         } else {
           await expect(tx).to.not.emit(privateSale, "Harvest");

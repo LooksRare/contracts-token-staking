@@ -49,8 +49,8 @@ contract AggregatorFeeSharingWithUniswapV3 is Ownable, Pausable, ReentrancyGuard
     // Last user action block
     uint256 public lastHarvestBlock;
 
-    // Minimum price of LOOKS (in WETH) multiplied 1e18 (e.g., 0.0004 ETH --> 4e14)
-    uint256 public minPriceLOOKSInWETH;
+    // Maximum price of LOOKS (in WETH) multiplied 1e18 (e.g., 0.0004 ETH --> 4e14)
+    uint256 public maxPriceLOOKSInWETH;
 
     // Threshold amount (in rewardToken)
     uint256 public thresholdAmount;
@@ -67,7 +67,7 @@ contract AggregatorFeeSharingWithUniswapV3 is Ownable, Pausable, ReentrancyGuard
     event HarvestStart();
     event HarvestStop();
     event NewHarvestBufferBlocks(uint256 harvestBufferBlocks);
-    event NewMinimumPriceOfLOOKSInWETH(uint256 minPriceLOOKSInWETH);
+    event NewMaximumPriceLOOKSInWETH(uint256 maxPriceLOOKSInWETH);
     event NewThresholdAmount(uint256 thresholdAmount);
     event NewTradingFeeUniswapV3(uint24 tradingFeeUniswapV3);
     event Withdraw(address indexed user, uint256 amount);
@@ -210,14 +210,14 @@ contract AggregatorFeeSharingWithUniswapV3 is Ownable, Pausable, ReentrancyGuard
     }
 
     /**
-     * @notice Update minimum price of LOOKS in WETH
-     * @param _newMinPriceLOOKSInWETH new minimum price of LOOKS in ETH times 1e18
+     * @notice Update maximum price of LOOKS in WETH
+     * @param _newMaxPriceLOOKSInWETH new maximum price of LOOKS in WETH times 1e18
      * @dev Only callable by owner
      */
-    function updateMinPriceOfLOOKSInWETH(uint256 _newMinPriceLOOKSInWETH) external onlyOwner {
-        minPriceLOOKSInWETH = _newMinPriceLOOKSInWETH;
+    function updateMaxPriceOfLOOKSInWETH(uint256 _newMaxPriceLOOKSInWETH) external onlyOwner {
+        maxPriceLOOKSInWETH = _newMaxPriceLOOKSInWETH;
 
-        emit NewMinimumPriceOfLOOKSInWETH(_newMinPriceLOOKSInWETH);
+        emit NewMaximumPriceLOOKSInWETH(_newMaxPriceLOOKSInWETH);
     }
 
     /**
@@ -328,7 +328,7 @@ contract AggregatorFeeSharingWithUniswapV3 is Ownable, Pausable, ReentrancyGuard
      * @return whether the transaction went through
      */
     function _sellRewardTokenToLOOKS(uint256 _amount) internal returns (bool) {
-        uint256 amountOutMinimum = minPriceLOOKSInWETH != 0 ? (_amount * minPriceLOOKSInWETH) / 1e18 : 0;
+        uint256 amountOutMinimum = maxPriceLOOKSInWETH != 0 ? (_amount * 1e18) / maxPriceLOOKSInWETH : 0;
 
         // Set the order parameters
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(

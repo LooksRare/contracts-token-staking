@@ -14,6 +14,8 @@ contract MockUniswapV3Router is ISwapRouter {
 
     uint256 public multiplier;
 
+    event SlippageError();
+
     constructor() {
         // Useless logic not to use an abstract contract
         DEPLOYER = msg.sender;
@@ -29,9 +31,15 @@ contract MockUniswapV3Router is ISwapRouter {
         override
         returns (uint256 amountOut)
     {
-        IERC20(params.tokenIn).safeTransferFrom(msg.sender, address(this), params.amountIn);
         amountOut = (params.amountIn * multiplier) / PRECISION_MULTIPLIER;
-        IERC20(params.tokenOut).transfer(msg.sender, amountOut);
+
+        if (amountOut < params.amountOutMinimum) {
+            emit SlippageError();
+            amountOut = 0;
+        } else {
+            IERC20(params.tokenIn).safeTransferFrom(msg.sender, address(this), params.amountIn);
+            IERC20(params.tokenOut).transfer(msg.sender, amountOut);
+        }
 
         return amountOut;
     }
