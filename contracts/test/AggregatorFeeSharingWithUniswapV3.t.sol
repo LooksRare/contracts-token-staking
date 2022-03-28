@@ -30,10 +30,10 @@ contract AggregatorTest is TestParameters, TestHelpers {
     MockERC20 public rewardToken;
 
     function setUp() public {
-        // 0. Mock WETH
+        // 0. Mock WETH deployment
         rewardToken = new MockERC20("WETH", "Wrapped Ether");
 
-        // 1. Mock Uniswap v3 Router
+        // 1. Mock UniswapV3Router deployment
         uniswapRouter = new MockUniswapV3Router();
 
         // 2. LooksRareToken deployment
@@ -80,7 +80,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
             address(tokenDistributor)
         );
 
-        // 6. FeeSharingSetter deployment (distribution period is set at 100 blocks)
+        // 6. FeeSharingSetter deployment (w/ distribution period is set at 100 blocks)
         feeSharingSetter = new FeeSharingSetter(address(feeSharingSystem), 30, 1000, 100);
         feeSharingSetter.grantRole(feeSharingSetter.OPERATOR_ROLE(), feeSharingSystem.owner());
         feeSharingSystem.transferOwnership(address(feeSharingSetter));
@@ -164,7 +164,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         uint256 amountDeposit = _parseEther(100);
         cheats.roll(_START_BLOCK + 5);
 
-        /**  1. Initial deposits at startBlock + 5
+        /** 1. Initial deposits at startBlock + 5
          */
         address[4] memory users = [user1, user2, user3, user4];
         for (uint256 i = 0; i < users.length; i++) {
@@ -173,7 +173,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         }
         assertEq(aggregatorFeeSharingWithUniswapV3.userInfo(user1), aggregatorFeeSharingWithUniswapV3.userInfo(user2));
 
-        /**  2. Time travel to startBlock + 20 (15 blocks later)
+        /** 2. Time travel to startBlock + 20 (15 blocks later)
          * User1 withdraws funds
          */
         cheats.roll(_START_BLOCK + 20);
@@ -189,21 +189,21 @@ contract AggregatorTest is TestParameters, TestHelpers {
             currentBalanceUser + _parseEtherWithFloating(1125, 1) + amountDeposit
         );
 
-        /**  3. Time travel to startBlock + 100 (80 blocks later)
+        /** 3. Time travel to startBlock + 100 (80 blocks later)
          * User2 checks the value of her shares
          */
         cheats.roll(_START_BLOCK + 100);
 
         // 80 blocks at 30 LOOKS/blocks = 2400 LOOKS
         // 800 LOOKS for user
-        // Total value of the shares = 800 LOOKS +  112.5 LOOKS + 100 LOOKS = 1012.5
+        // Total value of the shares = 800 LOOKS + 112.5 LOOKS + 100 LOOKS = 1012.5 LOOKS
         // @dev To deal with minor precision losses due to division, we look at the boundaries
         assertQuasiEq(
             aggregatorFeeSharingWithUniswapV3.calculateSharesValueInLOOKS(user2),
             _parseEtherWithFloating(10125, 1)
         );
 
-        /**  4. Time travel to startBlock + 170 (70 blocks later)
+        /** 4. Time travel to startBlock + 170 (70 blocks later)
          * User2 withdraws all
          */
         cheats.roll(_START_BLOCK + 170);
@@ -217,7 +217,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         // Total = 1362.5 LOOKS
         assertQuasiEq(looksRareToken.balanceOf(user2), currentBalanceUser + _parseEtherWithFloating(13625, 1));
 
-        /**  5. Time travel to startBlock + 400 (230 blocks later)
+        /** 5. Time travel to startBlock + 400 (230 blocks later)
          * User3 withdraws all
          */
         cheats.roll(_START_BLOCK + 400);
@@ -233,7 +233,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         // Total = 2150 LOOKS
         assertQuasiEq(looksRareToken.balanceOf(user3), currentBalanceUser + _parseEther(2150));
 
-        /**  6. Time travel to startBlock + 400 (230 blocks later)
+        /** 6. Time travel to startBlock + 400 (230 blocks later)
          * User4 withdraws all
          */
         cheats.roll(_START_BLOCK + 450);
@@ -244,12 +244,12 @@ contract AggregatorTest is TestParameters, TestHelpers {
         // Should be same as user3 since LOOKS distribution is stopped
         assertQuasiEq(looksRareToken.balanceOf(user4), currentBalanceUser + _parseEther(2150));
 
-        // Verify the final supply is equal to the cap - supply not minted (for first 5 blocks)
+        // Verify the final total supply is equal to the cap - supply not minted (for first 5 blocks)
         assertEq(looksRareToken.totalSupply(), _parseEther(_CAP) - _parseEther(500));
     }
 
     function testScenarioWithRouter() public {
-        /**  0. Initial set up
+        /** 0. Initial set up
          */
         cheats.roll(_START_BLOCK);
 
@@ -272,7 +272,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         uint256 amountDeposit = _parseEther(100);
         cheats.roll(_START_BLOCK + 5);
 
-        /**  1. Initial deposits at startBlock + 5
+        /** 1. Initial deposits at startBlock + 5
          */
         address[4] memory users = [user1, user2, user3, user4];
         for (uint256 i = 0; i < users.length; i++) {
@@ -280,7 +280,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
             aggregatorFeeSharingWithUniswapV3.deposit(amountDeposit);
         }
 
-        /**  2. Time travel to startBlock + 20 (15 blocks later)
+        /** 2. Time travel to startBlock + 20 (15 blocks later)
          * User1 withdraws funds
          */
         cheats.roll(_START_BLOCK + 20);
@@ -292,7 +292,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         // 15 blocks at 30 LOOKS/block = 450 LOOKS
         // + 150 WETH sold at 1 WETH = 1.5 LOOKS --> 225 LOOKS
         // 675 / 4 = 168.75 LOOKS for user
-        // @dev 50 WETH are lost to the fee sharing system contract since nobody was staking for the first 5 blocks
+        // @dev 50 WETH are lost to the fee sharing system contract since no user was staking for the first 5 blocks
         assertEq(
             looksRareToken.balanceOf(user1),
             currentBalanceUser + _parseEtherWithFloating(16875, 2) + amountDeposit
@@ -322,7 +322,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
             aggregatorFeeSharingWithUniswapV3.calculateSharesValueInLOOKS(user2)
         );
 
-        /**  3. Time travel to startBlock + 100 (80 blocks later)
+        /** 3. Time travel to startBlock + 100 (80 blocks later)
          * User1 withdraws
          */
         cheats.roll(_START_BLOCK + 100);
@@ -343,7 +343,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
 
         assertEq(feeSharingSystem.lastRewardBlock(), _START_BLOCK + 100);
 
-        /**  4. Start of new reward period over 300 blocks
+        /** 4. Start of new reward period over 300 blocks
          */
 
         // Add 1500 WETH for distribution for next 300 blocks (5 WETH per block)
@@ -352,8 +352,8 @@ contract AggregatorTest is TestParameters, TestHelpers {
         feeSharingSetter.updateRewards();
         assertEq(feeSharingSystem.currentRewardPerBlock(), _parseEther(5));
 
-        /**  5. Time travel to the end of the LOOKS staking/fee-sharing period
-         * All users withdraw their funds
+        /** 5. Time travel to the end of the LOOKS staking/fee-sharing period
+         * All 3 users withdraw their funds
          */
         cheats.roll(_START_BLOCK + 401);
 
@@ -383,7 +383,7 @@ contract AggregatorTest is TestParameters, TestHelpers {
         // There should be around 50 WETH left in the fee sharing contract (for the first 5 blocks without user staking)
         assertQuasiEq(rewardToken.balanceOf(address(feeSharingSystem)), _parseEther(50));
 
-        // Verify the final supply is equal to the cap - supply not minted (for first 5 blocks)
+        // Verify the final total supply is equal to the cap - supply not minted (for first 5 blocks)
         assertEq(looksRareToken.totalSupply(), _parseEther(_CAP) - _parseEther(500));
     }
 }
