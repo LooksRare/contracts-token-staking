@@ -65,6 +65,6 @@ contract OperatorControllerForRewardsV2 is Ownable {
     function canRelease() public view returns (bool) {
         uint256 endBlock = feeSharingSystem.periodEndBlock();
         uint256 lastUpdateBlock = feeSharingSystem.lastUpdateBlock();
-        return lastUpdateBlock > endBlock && block.number > endBlock;
+        return lastUpdateBlock == endBlock;
     }
 }
