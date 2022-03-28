@@ -7,8 +7,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {ISwapRouter} from "./uniswap-interfaces/ISwapRouter.sol";
-import {IRewardConvertor} from "./interfaces/IRewardConvertor.sol";
-
 import {FeeSharingSystem} from "./FeeSharingSystem.sol";
 
 /**
