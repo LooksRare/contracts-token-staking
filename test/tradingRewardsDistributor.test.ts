@@ -21,8 +21,8 @@ describe("TradingRewardsDistributor", () => {
   let admin: SignerWithAddress;
   let accounts: SignerWithAddress[];
 
-  let tree: any;
-  let hexRoot: any;
+  let tree: MerkleTree;
+  let hexRoot: string;
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -73,7 +73,7 @@ describe("TradingRewardsDistributor", () => {
           break;
         }
         // Compute the proof for the user
-        const hexProof = tree.getHexProof(computeHash(user, value), index);
+        const hexProof = tree.getHexProof(computeHash(user, value), Number(index));
 
         // Verify leaf is matched in the tree with the computed root
         assert.isTrue(tree.verify(hexProof, computeHash(user, value), hexRoot));
@@ -130,7 +130,7 @@ describe("TradingRewardsDistributor", () => {
         }
 
         // Compute the proof for the user
-        const hexProof = tree.getHexProof(computeHash(user, value), index);
+        const hexProof = tree.getHexProof(computeHash(user, value), Number(index));
 
         // Verify leaf is matched in the tree with the computed root
         assert.isTrue(tree.verify(hexProof, computeHash(user, value), hexRoot));
@@ -164,12 +164,12 @@ describe("TradingRewardsDistributor", () => {
       const expectedAmountToReceive = parseEther("3000");
 
       // Compute the proof for the user4
-      const hexProof = tree.getHexProof(computeHash(lateClaimer.address, expectedAmountToReceive.toString()), "3");
+      const hexProof = tree.getHexProof(computeHash(lateClaimer.address, expectedAmountToReceive.toString()), 2);
 
       // Verify leaf is matched in the tree with the computed root
-      assert.equal(
-        tree.verify(hexProof, computeHash(lateClaimer.address, expectedAmountToReceive.toString()), hexRoot),
-        true
+
+      assert.isTrue(
+        tree.verify(hexProof, computeHash(lateClaimer.address, expectedAmountToReceive.toString()), hexRoot)
       );
 
       tx = await tradingRewardsDistributor.connect(lateClaimer).claim(expectedAmountToReceive, hexProof);
@@ -205,8 +205,8 @@ describe("TradingRewardsDistributor", () => {
       const expectedAmountToReceiveForUser2 = parseEther("3000");
 
       // Compute the proof for user1/user2
-      const hexProof1 = tree.getHexProof(computeHash(user1.address, expectedAmountToReceiveForUser1.toString()), "0");
-      const hexProof2 = tree.getHexProof(computeHash(user2.address, expectedAmountToReceiveForUser2.toString()), "1");
+      const hexProof1 = tree.getHexProof(computeHash(user1.address, expectedAmountToReceiveForUser1.toString()), 0);
+      const hexProof2 = tree.getHexProof(computeHash(user2.address, expectedAmountToReceiveForUser2.toString()), 1);
 
       // Owner adds trading rewards and unpause distribution
       await tradingRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"));
@@ -293,20 +293,18 @@ describe("TradingRewardsDistributor", () => {
       ).to.be.revertedWith("Rewards: Invalid proof");
 
       // 7. Non-eligible user cannot claim with proof/amount of user1
-      assert.equal(
+      assert.isFalse(
         tree.verify(
           hexProof2,
           computeHash(notEligibleUser.address, expectedAmountToReceiveForUser2.toString()),
           hexRoot
-        ),
-        false
+        )
       );
 
-      assert.equal(
+      assert.isFalse(
         (
           await tradingRewardsDistributor.canClaim(notEligibleUser.address, expectedAmountToReceiveForUser2, hexProof2)
-        )[0],
-        false
+        )[0]
       );
 
       await expect(
@@ -337,7 +335,7 @@ describe("TradingRewardsDistributor", () => {
       const expectedAmountToReceiveForUser1 = parseEther("5000");
 
       // Compute the proof for user1/user2
-      const hexProof1 = tree.getHexProof(computeHash(user1.address, expectedAmountToReceiveForUser1.toString()), "0");
+      const hexProof1 = tree.getHexProof(computeHash(user1.address, expectedAmountToReceiveForUser1.toString()), 0);
 
       // Owner adds trading rewards and unpause distribution
       await tradingRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("4999.9999"));
