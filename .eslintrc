@@ -6,7 +6,12 @@
     "node": true
   },
   "plugins": ["@typescript-eslint"],
-  "extends": ["plugin:@typescript-eslint/recommended", "plugin:prettier/recommended", "plugin:node/recommended"],
+  "extends": [
+    "standard",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended",
+    "plugin:node/recommended"
+  ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 12
