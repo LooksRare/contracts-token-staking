@@ -56,6 +56,10 @@ const config: HardhatUserConfig = {
     pretty: false,
     except: ["test*", "@openzeppelin*", "uniswap*"],
   },
+  gasReporter: {
+    enabled: !!process.env.REPORT_GAS,
+    excludeContracts: ["test*", "@openzeppelin*", "uniswap*"],
+  },
 };
 
 export default config;
