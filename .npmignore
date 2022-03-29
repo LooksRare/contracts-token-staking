@@ -8,12 +8,11 @@ typechain
 # Hardhat files
 cache
 artifacts
-abis/
-
-# Others 
-lib
-.DS_Store
 
 hardhat.config.ts
 contracts/test
 test/
+
+# Others 
+lib
+.DS_Store

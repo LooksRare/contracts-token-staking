@@ -6,7 +6,10 @@
   "license": "MIT",
   "private": true,
   "files": [
-    "contracts/"
+    "/abis/*.json",
+    "/contracts/*.sol",
+    "/contracts/interfaces/*.sol",
+    "/contracts/uniswap-interfaces/*.sol"
   ],
   "keywords": [
     "looksrare"
@@ -25,6 +28,7 @@
     "lint": "eslint '**/*.{js,jsx,ts,tsx}'",
     "prepare": "husky install",
     "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
     "test:forge": "forge test",
     "test:coverage": "hardhat coverage && hardhat compile --force"
   },

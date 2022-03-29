@@ -53,7 +53,12 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     clear: true,
     flat: true,
-    except: ["AggregatorTest.sol", "ICheatCodes.sol", "Mock*"],
+    pretty: false,
+    except: ["test*", "@openzeppelin*", "uniswap*"],
+  },
+  gasReporter: {
+    enabled: !!process.env.REPORT_GAS,
+    excludeContracts: ["test*", "@openzeppelin*", "uniswap*"],
   },
 };
 
