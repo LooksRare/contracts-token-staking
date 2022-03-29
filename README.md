@@ -1,25 +1,37 @@
 # LooksRare Staking
 
-This project contains all smart contracts used for staking and other token economics (excluding the airdrop contract).
+This project contains all smart contracts used for staking and other token-related contracts (excluding the airdrop contract!).
 
-It is a hybrid Hardhat repo that also requires Forge to run Solidity tests powered by the [ds-test library](https://github.com/dapphub/ds-test/).
+## NPM package
 
-To install Forge, please follow the instructions [here](https://onbjerg.github.io/foundry-book/getting-started/installation.html#using-foundryup).
+The NPM package contains the following:
 
-## Tests
+- Solidity smart contracts (_".sol"_)
+- ABI files (_".json"_)
 
-TypeScript tests are included in the `test` folder at the root of this repo.
+## About this repo
 
-Solidity tests are included in the `test` folder in the `contracts` folder.
+### Structure
 
-## Example of Forge commands
+It is a hybrid [Hardhat](https://hardhat.org/) repo that also requires [Forge](https://onbjerg.github.io/foundry-book/index.html) to run Solidity tests powered by the [ds-test library](https://github.com/dapphub/ds-test/).
+
+> To install Forge, please follow the instructions [here](https://onbjerg.github.io/foundry-book/getting-started/installation.html#using-foundryup).
+
+### Run tests
+
+- TypeScript tests are included in the `test` folder at the root of this repo.
+- Solidity tests are included in the `test` folder in the `contracts` folder.
+
+### Example of Forge commands
 
 ```shell
+forge build
 forge test
-forge test -vvvv
+forge test -vv
+forge tree
 ```
 
-## Example of Hardhat commands
+### Example of Hardhat commands
 
 ```shell
 npx hardhat accounts
