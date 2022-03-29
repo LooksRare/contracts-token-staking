@@ -53,7 +53,8 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     clear: true,
     flat: true,
-    except: ["AggregatorTest.sol", "ICheatCodes.sol", "Mock*"],
+    pretty: false,
+    except: ["test*", "@openzeppelin*", "uniswap*"],
   },
 };
 

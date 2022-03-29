@@ -6,7 +6,10 @@
   "license": "MIT",
   "private": true,
   "files": [
-    "contracts/"
+    "/abis/*.json",
+    "/contracts/*.sol",
+    "/contracts/interfaces/*.sol",
+    "/contracts/uniswap-interfaces/*.sol"
   ],
   "keywords": [
     "looksrare"
