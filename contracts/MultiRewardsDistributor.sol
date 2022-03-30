@@ -15,10 +15,12 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     uint256 public constant BUFFER_ADMIN_WITHDRAW = 3 days;
+    uint256 public constant DUMMY_AMOUNT = 1e18;
 
     IERC20 public immutable looksRareToken;
 
     struct TreeParameter {
+        address dummyUser;
         bytes32 merkleRoot;
         uint256 maxAmountPerUserInCurrentTree;
     }
@@ -41,8 +43,12 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     // Checks whether a merkle root was used
     mapping(bytes32 => bool) public merkleRootUsed;
 
+    // Check whether dummy user was used
+    mapping(address => bool) public dummyUserUsed;
+
     event Claim(address user, uint256 rewardRound, uint256 totalAmount, uint8[] treeIds, uint256[] amounts);
     event NewTree(uint8 treeId);
+    event UpdateTradingRewards(uint256 indexed rewardRound);
     event TokenWithdrawnOwner(uint256 amount);
 
     /**
@@ -99,7 +105,8 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     function updateTradingRewards(
         uint8[] calldata treeIds,
         bytes32[] calldata merkleRoots,
-        uint256[] calldata maxAmountsPerUser
+        uint256[] calldata maxAmountsPerUser,
+        bytes32[][] calldata merkleProofsDummyUser
     ) external onlyOwner {
         require(
             treeIds.length == merkleRoots.length &&
@@ -114,18 +121,25 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
             treeParameters[treeIds[i]].merkleRoot = merkleRoots[i];
             treeParameters[treeIds[i]].maxAmountPerUserInCurrentTree = maxAmountsPerUser[i];
             merkleRootUsed[merkleRoots[i]] = true;
+            _canClaim(treeParameters[treeIds[i]].dummyUser, treeIds[i], DUMMY_AMOUNT, merkleProofsDummyUser[i]);
         }
 
         // Increment reward round
         currentRewardRound++;
+
+        emit UpdateTradingRewards(currentRewardRound);
     }
 
     /**
      * @notice Add a new tree
+     * @param dummyUser address of a dummy user (e.g., address(0), address(1))
      * @dev Only for owner.
      */
-    function addNewTree() public onlyOwner {
+    function addNewTree(address dummyUser) public onlyOwner {
+        require(!dummyUserUsed[dummyUser], "Owner: Dummy user exists");
+        treeParameters[numberTrees].dummyUser = dummyUser;
         numberTrees++;
+
         emit NewTree(numberTrees - 1);
     }
 
