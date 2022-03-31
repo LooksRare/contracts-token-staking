@@ -10,8 +10,7 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 /**
  * @title MultiRewardsDistributor
  * @notice It distributes LOOKS tokens with parallel rolling Merkle airdrops.
- * @dev It uses safe guard addresses (e.g., address(0), address(1)) to add a protection layer
- * against operational errors when the operator sets up the merkle roots for each of the existing trees.
+ * @dev It uses safe guard addresses (e.g., address(0), address(1)) to add a protection layer against operational errors when the operator sets up the merkle roots for each of the existing trees.
  */
 contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
