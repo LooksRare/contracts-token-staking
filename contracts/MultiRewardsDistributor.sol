@@ -9,20 +9,26 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 /**
  * @title MultiRewardsDistributor
- * @notice It distributes LOOKS tokens with multiple rolling Merkle airdrops.
+ * @notice It distributes LOOKS tokens with parallel rolling Merkle airdrops.
+ * @dev It uses safe guard addresses (e.g., address(0), address(1)) to add a protection layer
+ * against operational errors when the operator sets up the merkle roots for each of the existing trees.
  */
 contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
+    // Time buffer for the admin to withdraw LOOKS tokens if the contract becomes paused
     uint256 public constant BUFFER_ADMIN_WITHDRAW = 3 days;
+
+    // Standard safe guard amount (set at 1 LOOKS)
     uint256 public constant SAFE_GUARD_AMOUNT = 1e18;
 
+    // LooksRare token
     IERC20 public immutable looksRareToken;
 
     struct TreeParameter {
-        address safeGuard;
-        bytes32 merkleRoot;
-        uint256 maxAmountPerUserInCurrentTree;
+        address safeGuard; // address of the safe guard (e.g., address(0))
+        bytes32 merkleRoot; // current merkle root
+        uint256 maxAmountPerUserInCurrentTree; // max amount per user in the current tree
     }
 
     // Keeps track of number of trees existing in parallel
