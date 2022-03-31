@@ -80,6 +80,7 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
             require(treeIds[i] < numberTrees, "Rewards: Tree nonexistent");
             (bool claimStatus, uint256 adjustedAmount) = _canClaim(msg.sender, treeIds[i], amounts[i], merkleProofs[i]);
             require(claimStatus, "Rewards: Invalid proof");
+            require(adjustedAmount > 0, "Rewards: Already claimed");
             require(
                 amounts[i] <= treeParameters[treeIds[i]].maxAmountPerUserInCurrentTree,
                 "Rewards: Amount higher than max"
@@ -192,7 +193,7 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
             return (statuses, adjustedAmounts);
         } else {
             for (uint256 i = 0; i < treeIds.length; i++) {
-                if (treeIds[i] >= numberTrees) {
+                if (treeIds[i] < numberTrees) {
                     (statuses[i], adjustedAmounts[i]) = _canClaim(user, treeIds[i], amounts[i], merkleProofs[i]);
                 }
             }
@@ -217,15 +218,11 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
         bytes32 node = keccak256(abi.encodePacked(user, amount));
         bool canUserClaim = MerkleProof.verify(merkleProof, treeParameters[treeId].merkleRoot, node);
 
-        if ((!canUserClaim)) {
+        if (!canUserClaim) {
             return (false, 0);
         } else {
             uint256 adjustedAmount = amount - amountClaimedByUserPerTreeId[user][treeId];
-            if (adjustedAmount == 0) {
-                return (false, 0);
-            } else {
-                return (true, adjustedAmount);
-            }
+            return (true, adjustedAmount);
         }
     }
 }
