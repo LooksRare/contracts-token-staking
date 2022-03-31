@@ -128,7 +128,7 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
         }
 
         // Emit event and increment reward round
-        emit UpdateTradingRewards(currentRewardRound++);
+        emit UpdateTradingRewards(++currentRewardRound);
     }
 
     /**
@@ -138,6 +138,7 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
      */
     function addNewTree(address safeGuard) public onlyOwner {
         require(!safeGuardUsed[safeGuard], "Owner: Safe guard already used");
+        safeGuardUsed[safeGuard] = true;
         treeParameters[numberTrees].safeGuard = safeGuard;
 
         // Emit event and increment number trees
