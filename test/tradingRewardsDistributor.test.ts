@@ -2,11 +2,9 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { MerkleTree } from "merkletreejs";
 
-/* eslint-disable node/no-extraneous-import */
-import { keccak256 } from "js-sha3";
 import { increaseTo } from "./helpers/block-traveller";
+import { createMerkleTree } from "./helpers/cryptography";
 
 const { parseEther } = utils;
 
@@ -20,9 +18,6 @@ describe("TradingRewardsDistributor", () => {
 
   let admin: SignerWithAddress;
   let accounts: SignerWithAddress[];
-
-  let tree: MerkleTree;
-  let hexRoot: string;
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -51,17 +46,10 @@ describe("TradingRewardsDistributor", () => {
         "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
       };
 
-      tree = new MerkleTree(
-        Object.entries(json).map((data) => computeHash(...data)),
-        keccak256,
-        { sortPairs: true }
-      );
-
-      // Compute the root of the tree
-      hexRoot = tree.getHexRoot();
+      let [tree, hexRoot] = createMerkleTree(json);
 
       let tx = await tradingRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"));
-      expect(tx).to.emit(tradingRewardsDistributor, "UpdateTradingRewards").withArgs("1");
+      await expect(tx).to.emit(tradingRewardsDistributor, "UpdateTradingRewards").withArgs("1");
 
       await tradingRewardsDistributor.connect(admin).unpauseDistribution();
 
@@ -84,7 +72,7 @@ describe("TradingRewardsDistributor", () => {
         assert.equal(claimStatus[1].toString(), value);
 
         tx = await tradingRewardsDistributor.connect(signedUser).claim(value, hexProof);
-        expect(tx).to.emit(tradingRewardsDistributor, "RewardsClaim").withArgs(user, "1", value);
+        await expect(tx).to.emit(tradingRewardsDistributor, "RewardsClaim").withArgs(user, "1", value);
 
         claimStatus = await tradingRewardsDistributor.canClaim(user, value, hexProof);
         assert.isFalse(claimStatus[0]);
@@ -109,17 +97,10 @@ describe("TradingRewardsDistributor", () => {
         "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("3000").toString(),
       };
 
-      tree = new MerkleTree(
-        Object.entries(jsonRound2).map((data) => computeHash(...data)),
-        keccak256,
-        { sortPairs: true }
-      );
-
-      // Compute the root of the tree
-      hexRoot = tree.getHexRoot();
+      [tree, hexRoot] = createMerkleTree(jsonRound2);
 
       tx = await tradingRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("8000"));
-      expect(tx).to.emit(tradingRewardsDistributor, "UpdateTradingRewards").withArgs("2");
+      await expect(tx).to.emit(tradingRewardsDistributor, "UpdateTradingRewards").withArgs("2");
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
@@ -145,7 +126,9 @@ describe("TradingRewardsDistributor", () => {
         assert.deepEqual(claimStatus[1], expectedAmountToReceive);
 
         tx = await tradingRewardsDistributor.connect(signedUser).claim(value, hexProof);
-        expect(tx).to.emit(tradingRewardsDistributor, "RewardsClaim").withArgs(user, "2", expectedAmountToReceive);
+        await expect(tx)
+          .to.emit(tradingRewardsDistributor, "RewardsClaim")
+          .withArgs(user, "2", expectedAmountToReceive);
 
         claimStatus = await tradingRewardsDistributor.canClaim(user, value, hexProof);
         assert.isFalse(claimStatus[0]);
@@ -173,7 +156,7 @@ describe("TradingRewardsDistributor", () => {
       );
 
       tx = await tradingRewardsDistributor.connect(lateClaimer).claim(expectedAmountToReceive, hexProof);
-      expect(tx)
+      await expect(tx)
         .to.emit(tradingRewardsDistributor, "RewardsClaim")
         .withArgs(lateClaimer.address, "2", expectedAmountToReceive);
     });
@@ -188,14 +171,7 @@ describe("TradingRewardsDistributor", () => {
       };
 
       // Compute tree
-      tree = new MerkleTree(
-        Object.entries(json).map((data) => computeHash(...data)),
-        keccak256,
-        { sortPairs: true }
-      );
-
-      // Compute the root of the tree
-      hexRoot = tree.getHexRoot();
+      const [tree, hexRoot] = createMerkleTree(json);
 
       const user1 = accounts[1];
       const user2 = accounts[2];
@@ -322,14 +298,7 @@ describe("TradingRewardsDistributor", () => {
       };
 
       // Compute tree
-      tree = new MerkleTree(
-        Object.entries(json).map((data) => computeHash(...data)),
-        keccak256,
-        { sortPairs: true }
-      );
-
-      // Compute the root of the tree
-      hexRoot = tree.getHexRoot();
+      const [tree, hexRoot] = createMerkleTree(json);
 
       const user1 = accounts[1];
       const expectedAmountToReceiveForUser1 = parseEther("5000");
@@ -355,10 +324,10 @@ describe("TradingRewardsDistributor", () => {
       await mockLooksRareToken.connect(admin).transfer(tradingRewardsDistributor.address, depositAmount);
 
       let tx = await tradingRewardsDistributor.connect(admin).unpauseDistribution();
-      expect(tx).to.emit(tradingRewardsDistributor, "Unpaused");
+      await expect(tx).to.emit(tradingRewardsDistributor, "Unpaused");
 
       tx = await tradingRewardsDistributor.connect(admin).pauseDistribution();
-      expect(tx).to.emit(tradingRewardsDistributor, "Paused");
+      await expect(tx).to.emit(tradingRewardsDistributor, "Paused");
 
       await expect(tradingRewardsDistributor.connect(admin).withdrawTokenRewards(depositAmount)).to.be.revertedWith(
         "Owner: Too early to withdraw"
@@ -371,7 +340,7 @@ describe("TradingRewardsDistributor", () => {
       await increaseTo(lastPausedTimestamp.add(BUFFER_ADMIN_WITHDRAW).add(BigNumber.from("1")));
 
       tx = await tradingRewardsDistributor.connect(admin).withdrawTokenRewards(depositAmount);
-      expect(tx).to.emit(tradingRewardsDistributor, "TokenWithdrawnOwner").withArgs(depositAmount);
+      await expect(tx).to.emit(tradingRewardsDistributor, "TokenWithdrawnOwner").withArgs(depositAmount);
     });
 
     it("Owner - Owner cannot set twice the same Merkle Root", async () => {
@@ -383,14 +352,7 @@ describe("TradingRewardsDistributor", () => {
         "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
       };
 
-      tree = new MerkleTree(
-        Object.entries(json).map((data) => computeHash(...data)),
-        keccak256,
-        { sortPairs: true }
-      );
-
-      // Compute the root of the tree
-      hexRoot = tree.getHexRoot();
+      const [, hexRoot] = createMerkleTree(json);
 
       await tradingRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"));
       await tradingRewardsDistributor.connect(admin).unpauseDistribution();
