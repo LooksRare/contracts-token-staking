@@ -43,11 +43,12 @@ describe("MultiRewardsDistributor", () => {
 
   describe("#1 - Regular claims work as expected", async () => {
     it("Claim - Users can claim", async () => {
-      await multiRewardsDistributor.connect(admin).addNewTree(constants.AddressZero);
+      let tx = await multiRewardsDistributor.connect(admin).addNewTree(constants.AddressZero);
+      await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(0);
 
-      // Dummy + Users 1 to 4
+      // Safe Guard + Users 1 to 4
       const json = {
-        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Dummy address
+        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
         "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
@@ -63,12 +64,16 @@ describe("MultiRewardsDistributor", () => {
       // Compute the root of the tree
       hexRoot = tree.getHexRoot();
 
-      let hexDummyProof = tree.getHexProof(computeHash(constants.AddressZero, parseEther("1").toString()), Number(0));
+      let hexSafeGuardProof = tree.getHexProof(
+        computeHash(constants.AddressZero, parseEther("1").toString()),
+        Number(0)
+      );
 
-      let tx = await multiRewardsDistributor
+      tx = await multiRewardsDistributor
         .connect(admin)
-        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexDummyProof]);
-      expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("1");
+        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
+
+      await expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("0");
 
       await multiRewardsDistributor.connect(admin).unpauseDistribution();
 
@@ -107,9 +112,9 @@ describe("MultiRewardsDistributor", () => {
       // Transfer 10k LOOKS to the multiRewardsDistributor
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("10000"));
 
-      // Dummy + Users 1 to 4 (10k rewards added)
+      // Safe Guard + Users 1 to 4 (10k rewards added)
       const jsonRound2 = {
-        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Dummy address
+        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("8000").toString(),
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("6000").toString(),
         "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("3000").toString(),
@@ -125,12 +130,12 @@ describe("MultiRewardsDistributor", () => {
       // Compute the root of the tree
       hexRoot = tree.getHexRoot();
 
-      hexDummyProof = tree.getHexProof(computeHash(constants.AddressZero, parseEther("1").toString()), Number(0));
+      hexSafeGuardProof = tree.getHexProof(computeHash(constants.AddressZero, parseEther("1").toString()), Number(0));
 
       tx = await multiRewardsDistributor
         .connect(admin)
-        .updateTradingRewards([0], [hexRoot], [parseEther("8000")], [hexDummyProof]);
-      expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("2");
+        .updateTradingRewards([0], [hexRoot], [parseEther("8000")], [hexSafeGuardProof]);
+      await expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("1");
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
@@ -200,10 +205,10 @@ describe("MultiRewardsDistributor", () => {
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, depositAmount);
 
       let tx = await multiRewardsDistributor.connect(admin).unpauseDistribution();
-      expect(tx).to.emit(multiRewardsDistributor, "Unpaused");
+      await expect(tx).to.emit(multiRewardsDistributor, "Unpaused");
 
       tx = await multiRewardsDistributor.connect(admin).pauseDistribution();
-      expect(tx).to.emit(multiRewardsDistributor, "Paused");
+      await expect(tx).to.emit(multiRewardsDistributor, "Paused");
 
       await expect(multiRewardsDistributor.connect(admin).withdrawTokenRewards(depositAmount)).to.be.revertedWith(
         "Owner: Too early to withdraw"
@@ -216,15 +221,15 @@ describe("MultiRewardsDistributor", () => {
       await increaseTo(lastPausedTimestamp.add(BUFFER_ADMIN_WITHDRAW).add(BigNumber.from("1")));
 
       tx = await multiRewardsDistributor.connect(admin).withdrawTokenRewards(depositAmount);
-      expect(tx).to.emit(multiRewardsDistributor, "TokenWithdrawnOwner").withArgs(depositAmount);
+      await expect(tx).to.emit(multiRewardsDistributor, "TokenWithdrawnOwner").withArgs(depositAmount);
     });
 
     it("Owner - Owner cannot set twice the same Merkle Root", async () => {
       await multiRewardsDistributor.connect(admin).addNewTree(constants.AddressZero);
 
-      // Dummy + Users 1 to 4
+      // Safe Guard + Users 1 to 4
       const json = {
-        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Dummy address
+        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
         "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
@@ -239,16 +244,19 @@ describe("MultiRewardsDistributor", () => {
 
       // Compute the root of the tree
       hexRoot = tree.getHexRoot();
-      const hexDummyProof = tree.getHexProof(computeHash(constants.AddressZero, parseEther("1").toString()), Number(0));
+      const hexSafeGuardProof = tree.getHexProof(
+        computeHash(constants.AddressZero, parseEther("1").toString()),
+        Number(0)
+      );
 
       await multiRewardsDistributor
         .connect(admin)
-        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexDummyProof]);
+        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
 
       await expect(
         multiRewardsDistributor
           .connect(admin)
-          .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexDummyProof])
+          .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof])
       ).to.be.revertedWith("Owner: Merkle root already used");
     });
   });
