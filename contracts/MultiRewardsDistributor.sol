@@ -15,12 +15,12 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     uint256 public constant BUFFER_ADMIN_WITHDRAW = 3 days;
-    uint256 public constant DUMMY_AMOUNT = 1e18;
+    uint256 public constant SAFE_GUARD_AMOUNT = 1e18;
 
     IERC20 public immutable looksRareToken;
 
     struct TreeParameter {
-        address dummyUser;
+        address safeGuard;
         bytes32 merkleRoot;
         uint256 maxAmountPerUserInCurrentTree;
     }
@@ -43,8 +43,8 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     // Checks whether a merkle root was used
     mapping(bytes32 => bool) public merkleRootUsed;
 
-    // Check whether dummy user was used
-    mapping(address => bool) public dummyUserUsed;
+    // Check whether safe guard address was used
+    mapping(address => bool) public safeGuardUsed;
 
     event Claim(address user, uint256 rewardRound, uint256 totalAmount, uint8[] treeIds, uint256[] amounts);
     event NewTree(uint8 treeId);
@@ -102,16 +102,18 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
      * @param treeIds array of treeIds
      * @param merkleRoots array of merkle roots (for each treeId)
      * @param maxAmountsPerUser array of maximum amounts per user (for each treeId)
+     * @param merkleProofsSafeGuards array of merkle proof for the safe guard addresses
      */
     function updateTradingRewards(
         uint8[] calldata treeIds,
         bytes32[] calldata merkleRoots,
         uint256[] calldata maxAmountsPerUser,
-        bytes32[][] calldata merkleProofsDummyUser
+        bytes32[][] calldata merkleProofsSafeGuards
     ) external onlyOwner {
         require(
             treeIds.length == merkleRoots.length &&
-                merkleRoots.length == maxAmountsPerUser.length &&
+                treeIds.length == maxAmountsPerUser.length &&
+                treeIds.length == merkleProofsSafeGuards.length &&
                 merkleRoots.length > 0,
             "Owner: Wrong lengths"
         );
@@ -122,7 +124,7 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
             treeParameters[treeIds[i]].merkleRoot = merkleRoots[i];
             treeParameters[treeIds[i]].maxAmountPerUserInCurrentTree = maxAmountsPerUser[i];
             merkleRootUsed[merkleRoots[i]] = true;
-            _canClaim(treeParameters[treeIds[i]].dummyUser, treeIds[i], DUMMY_AMOUNT, merkleProofsDummyUser[i]);
+            _canClaim(treeParameters[treeIds[i]].safeGuard, treeIds[i], SAFE_GUARD_AMOUNT, merkleProofsSafeGuards[i]);
         }
 
         // Increment reward round
@@ -133,12 +135,12 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
 
     /**
      * @notice Add a new tree
-     * @param dummyUser address of a dummy user (e.g., address(0), address(1))
+     * @param safeGuard address of a safe guard user (e.g., address(0), address(1))
      * @dev Only for owner.
      */
-    function addNewTree(address dummyUser) public onlyOwner {
-        require(!dummyUserUsed[dummyUser], "Owner: Dummy user exists");
-        treeParameters[numberTrees].dummyUser = dummyUser;
+    function addNewTree(address safeGuard) public onlyOwner {
+        require(!safeGuardUsed[safeGuard], "Owner: Safe guard already used");
+        treeParameters[numberTrees].safeGuard = safeGuard;
         numberTrees++;
 
         emit NewTree(numberTrees - 1);
