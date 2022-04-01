@@ -9,6 +9,12 @@ import { computeHash, createMerkleTree } from "./helpers/cryptography";
 const { parseEther } = utils;
 
 describe("MultiRewardsDistributor", () => {
+  let looksRareToken: Contract;
+  let multiRewardsDistributor: Contract;
+
+  let admin: SignerWithAddress;
+  let accounts: SignerWithAddress[];
+
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
   const ONE_ADDRESS = "0x0000000000000000000000000000000000000001";
 
@@ -29,6 +35,7 @@ describe("MultiRewardsDistributor", () => {
     "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("100").toString(),
   };
 
+  // Safe Guard (ZERO_ADDRESS) + Users 1 to 4
   const jsonTree0Round2: Record<string, string> = {
     "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
     "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("8000").toString(),
@@ -37,11 +44,14 @@ describe("MultiRewardsDistributor", () => {
     "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("3000").toString(),
   };
 
-  let looksRareToken: Contract;
-  let multiRewardsDistributor: Contract;
-
-  let admin: SignerWithAddress;
-  let accounts: SignerWithAddress[];
+  // Safe Guard (ONE_ADDRESS) + Users 1 to 4 (user 4 is new)
+  const jsonTree1Round2: Record<string, string> = {
+    "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("1000").toString(),
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("800").toString(),
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("600").toString(),
+    "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("500").toString(),
+  };
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -60,7 +70,7 @@ describe("MultiRewardsDistributor", () => {
     await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("10000"));
   });
 
-  describe("#1 - Regular claims work as expected", async () => {
+  describe("#1 - Scenario tests", async () => {
     it("Claim (Single tree)- Users can claim", async () => {
       let tx = await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
       await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(0);
@@ -265,7 +275,22 @@ describe("MultiRewardsDistributor", () => {
     });
   });
 
-  describe("#2 - Owner functions", async () => {
+  describe("#2 - Revertions of user functions", async () => {
+    it("Cannot claim if array lengthes differ", async () => {
+      //
+    });
+    it("Cannot claim twice", async () => {
+      //
+    });
+    it("Cannot claim with wrong proofs, if not in the tree, or someone's else proof", async () => {
+      //
+    });
+    it("Cannot claim if more than tree limit", async () => {
+      //
+    });
+  });
+
+  describe("#3 - Owner functions", async () => {
     it("Owner - Cannot withdraw immediately after pausing", async () => {
       const depositAmount = parseEther("10000");
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, depositAmount);
@@ -295,6 +320,44 @@ describe("MultiRewardsDistributor", () => {
       await expect(multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS)).to.be.revertedWith(
         "Owner: Safe guard already used'"
       );
+    });
+
+    it("Owner - Cannot update rewards if wrong lengths or tree is not existent", async () => {
+      const [tree0, hexRoot0] = createMerkleTree(jsonTree0);
+      const hexSafeGuardProofTree0 = tree0.getHexProof(
+        computeHash(ZERO_ADDRESS, parseEther("1").toString()),
+        Number(0)
+      );
+
+      await expect(
+        multiRewardsDistributor
+          .connect(admin)
+          .updateTradingRewards([0, 1], [hexRoot0], [parseEther("5000")], [hexSafeGuardProofTree0])
+      ).to.be.revertedWith("Owner: Wrong lengths");
+
+      await expect(
+        multiRewardsDistributor
+          .connect(admin)
+          .updateTradingRewards([0], [hexRoot0, hexRoot0], [parseEther("5000")], [hexSafeGuardProofTree0])
+      ).to.be.revertedWith("Owner: Wrong lengths");
+
+      await expect(
+        multiRewardsDistributor
+          .connect(admin)
+          .updateTradingRewards([0], [hexRoot0], [parseEther("5000"), parseEther("30")], [hexSafeGuardProofTree0])
+      ).to.be.revertedWith("Owner: Wrong lengths");
+
+      await expect(
+        multiRewardsDistributor
+          .connect(admin)
+          .updateTradingRewards([0], [hexRoot0], [parseEther("5000")], [hexSafeGuardProofTree0, hexSafeGuardProofTree0])
+      ).to.be.revertedWith("Owner: Wrong lengths");
+
+      await expect(
+        multiRewardsDistributor
+          .connect(admin)
+          .updateTradingRewards([0], [hexRoot0], [parseEther("5000")], [hexSafeGuardProofTree0])
+      ).to.be.revertedWith("Owner: Tree nonexistent");
     });
 
     it("Owner - Owner cannot invert the hex roots", async () => {
