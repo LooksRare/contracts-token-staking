@@ -12,6 +12,31 @@ describe("MultiRewardsDistributor", () => {
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
   const ONE_ADDRESS = "0x0000000000000000000000000000000000000001";
 
+  // Safe Guard + Users 1 to 4
+  const jsonTree0: Record<string, string> = {
+    "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
+    "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
+  };
+
+  // Safe Guard (ONE_ADDRESS) + Users 1 to 3
+  const jsonTree1: Record<string, string> = {
+    "0x0000000000000000000000000000000000000001": parseEther("1").toString(), // Safe Guard address
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("500").toString(),
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("300").toString(),
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("100").toString(),
+  };
+
+  const jsonTree0Round2: Record<string, string> = {
+    "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("8000").toString(),
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("6000").toString(),
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("3000").toString(),
+    "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("3000").toString(),
+  };
+
   let looksRareToken: Contract;
   let multiRewardsDistributor: Contract;
 
@@ -40,16 +65,7 @@ describe("MultiRewardsDistributor", () => {
       let tx = await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
       await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(0);
 
-      // Safe Guard + Users 1 to 4
-      const json = {
-        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-      };
-
-      let [tree, hexRoot] = createMerkleTree(json);
+      let [tree, hexRoot] = createMerkleTree(jsonTree0);
       let hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
 
       tx = await multiRewardsDistributor
@@ -60,7 +76,7 @@ describe("MultiRewardsDistributor", () => {
       await multiRewardsDistributor.connect(admin).unpauseDistribution();
 
       // All users except the 4th one claims
-      for (const [index, [user, value]] of Object.entries(Object.entries(json))) {
+      for (const [index, [user, value]] of Object.entries(Object.entries(jsonTree0))) {
         const signedUser = accounts[Number(index)];
 
         if (Number(index) !== 0 && signedUser !== accounts[3]) {
@@ -94,16 +110,7 @@ describe("MultiRewardsDistributor", () => {
       // Transfer 10k LOOKS to the multiRewardsDistributor
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("10000"));
 
-      // Safe Guard + Users 1 to 4 (10k rewards added)
-      const jsonRound2 = {
-        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("8000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("6000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("3000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("3000").toString(),
-      };
-
-      [tree, hexRoot] = createMerkleTree(jsonRound2);
+      [tree, hexRoot] = createMerkleTree(jsonTree0Round2);
       hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
 
       tx = await multiRewardsDistributor
@@ -112,7 +119,7 @@ describe("MultiRewardsDistributor", () => {
       await expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("2");
 
       // All users except the 4th one claims
-      for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
+      for (const [index, [user, value]] of Object.entries(Object.entries(jsonTree0Round2))) {
         const signedUser = accounts[Number(index)];
 
         if (Number(index) !== 0 && signedUser !== accounts[3]) {
@@ -173,28 +180,13 @@ describe("MultiRewardsDistributor", () => {
     it("Claim (Two/three trees) - Users can claim", async () => {
       /** 0. Initial set up for trees and first round
        */
+      await multiRewardsDistributor.connect(admin).unpauseDistribution();
+
       let tx = await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
       await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(0);
 
       tx = await multiRewardsDistributor.connect(admin).addNewTree(ONE_ADDRESS);
       await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(1);
-
-      // Safe Guard (ZERO_ADDRESS) + Users 1 to 4
-      const jsonTree0 = {
-        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-      };
-
-      // Safe Guard (ONE_ADDRESS) + Users 1 to 3
-      const jsonTree1 = {
-        "0x0000000000000000000000000000000000000001": parseEther("1").toString(), // Safe Guard address
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("500").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("300").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("100").toString(),
-      };
 
       const [tree0, hexRoot0] = createMerkleTree(jsonTree0);
       const [tree1, hexRoot1] = createMerkleTree(jsonTree1);
@@ -216,6 +208,52 @@ describe("MultiRewardsDistributor", () => {
       /** 1. Round 1 - Claiming start
        */
 
+      // 1.1 User1 claims (accounts 1 --> position 1 in both trees)
+      let user = accounts[1].address;
+      let value0 = parseEther("5000").toString();
+      let value1 = parseEther("500").toString();
+      const totalValue = parseEther("5500");
+      let hexProof0 = tree0.getHexProof(computeHash(user, value0), 1);
+      let hexProof1 = tree1.getHexProof(computeHash(user, value1), 1);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1), hexRoot1));
+      let claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
+      assert.isTrue(claimStatus[0][0]);
+      assert.isTrue(claimStatus[0][1]);
+      assert.equal(claimStatus[1][0].toString(), value0);
+      assert.equal(claimStatus[1][1].toString(), value1);
+
+      // User claims
+      tx = await multiRewardsDistributor.connect(accounts[1]).claim([0, 1], [value0, value1], [hexProof0, hexProof1]);
+      await expect(tx)
+        .to.emit(multiRewardsDistributor, "Claim")
+        .withArgs(user, "1", totalValue, [0, 1], [value0, value1]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, totalValue);
+
+      // 1.2 User2 claims in 2 parts
+      user = accounts[2].address;
+      value0 = parseEther("3000").toString();
+      value1 = parseEther("300").toString();
+      hexProof0 = tree0.getHexProof(computeHash(user, value0), 2);
+      hexProof1 = tree1.getHexProof(computeHash(user, value1), 2);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1), hexRoot1));
+      claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
+      assert.isTrue(claimStatus[0][0]);
+      assert.isTrue(claimStatus[0][1]);
+      assert.equal(claimStatus[1][0].toString(), value0);
+      assert.equal(claimStatus[1][1].toString(), value1);
+
+      // User2 claims the tree 1 first
+      tx = await multiRewardsDistributor.connect(accounts[2]).claim([1], [value1], [hexProof1]);
+      await expect(tx).to.emit(multiRewardsDistributor, "Claim").withArgs(user, "1", value1, [1], [value1]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, value1);
+
+      // User2 claims the tree 0 after
+      tx = await multiRewardsDistributor.connect(accounts[2]).claim([0], [value0], [hexProof0]);
+      await expect(tx).to.emit(multiRewardsDistributor, "Claim").withArgs(user, "1", value0, [0], [value0]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, value0);
+
       /** 2. Set up for second round
        */
 
@@ -230,8 +268,6 @@ describe("MultiRewardsDistributor", () => {
   describe("#2 - Owner functions", async () => {
     it("Owner - Cannot withdraw immediately after pausing", async () => {
       const depositAmount = parseEther("10000");
-
-      // Transfer funds to the mockLooksRareToken
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, depositAmount);
 
       let tx = await multiRewardsDistributor.connect(admin).unpauseDistribution();
@@ -255,36 +291,51 @@ describe("MultiRewardsDistributor", () => {
     });
 
     it("Owner - Cannot set up the same safe guard twice", async () => {
-      it("Claim (Two/three trees) - Users can claim", async () => {
-        await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
-        await expect(multiRewardsDistributor.connect(admin).addNewTree(ONE_ADDRESS)).to.be.revertedWith("NO");
-      });
+      await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
+      await expect(multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS)).to.be.revertedWith(
+        "Owner: Safe guard already used'"
+      );
+    });
 
-      it("Owner - Owner cannot set twice the same Merkle Root", async () => {
-        await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
+    it("Owner - Owner cannot invert the hex roots", async () => {
+      await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
+      await multiRewardsDistributor.connect(admin).addNewTree(ONE_ADDRESS);
 
-        // Safe Guard (ZERO_ADDRESS) + Users 1 to 4
-        const json = {
-          "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
-          "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-          "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-          "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-          "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-        };
+      const [tree0, hexRoot0] = createMerkleTree(jsonTree0);
+      const [tree1, hexRoot1] = createMerkleTree(jsonTree1);
+      const hexSafeGuardProofTree0 = tree0.getHexProof(
+        computeHash(ZERO_ADDRESS, parseEther("1").toString()),
+        Number(0)
+      );
+      const hexSafeGuardProofTree1 = tree1.getHexProof(computeHash(ONE_ADDRESS, parseEther("1").toString()), Number(0));
 
-        const [tree, hexRoot] = createMerkleTree(json);
-        const hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
-
-        await multiRewardsDistributor
+      await expect(
+        multiRewardsDistributor
           .connect(admin)
-          .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
+          .updateTradingRewards(
+            [0, 1],
+            [hexRoot1, hexRoot0],
+            [parseEther("5000"), parseEther("500")],
+            [hexSafeGuardProofTree0, hexSafeGuardProofTree1]
+          )
+      ).to.be.revertedWith("Owner: Wrong safe guard proofs");
+    });
 
-        await expect(
-          multiRewardsDistributor
-            .connect(admin)
-            .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof])
-        ).to.be.revertedWith("Owner: Merkle root already used");
-      });
+    it("Owner - Owner cannot set twice the same Merkle Root", async () => {
+      await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
+
+      const [tree, hexRoot] = createMerkleTree(jsonTree0);
+      const hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+
+      await multiRewardsDistributor
+        .connect(admin)
+        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
+
+      await expect(
+        multiRewardsDistributor
+          .connect(admin)
+          .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof])
+      ).to.be.revertedWith("Owner: Merkle root already used");
     });
   });
 });
