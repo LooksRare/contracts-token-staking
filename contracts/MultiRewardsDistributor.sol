@@ -129,7 +129,13 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
             treeParameters[treeIds[i]].merkleRoot = merkleRoots[i];
             treeParameters[treeIds[i]].maxAmountPerUserInCurrentTree = maxAmountsPerUser[i];
             merkleRootUsed[merkleRoots[i]] = true;
-            _canClaim(treeParameters[treeIds[i]].safeGuard, treeIds[i], SAFE_GUARD_AMOUNT, merkleProofsSafeGuards[i]);
+            (bool canSafeGuardClaim, ) = _canClaim(
+                treeParameters[treeIds[i]].safeGuard,
+                treeIds[i],
+                SAFE_GUARD_AMOUNT,
+                merkleProofsSafeGuards[i]
+            );
+            require(canSafeGuardClaim, "Owner: Wrong safe guard proofs");
         }
 
         // Emit event and increment reward round
