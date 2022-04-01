@@ -15,6 +15,12 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
+    struct TreeParameter {
+        address safeGuard; // address of the safe guard (e.g., address(0))
+        bytes32 merkleRoot; // current merkle root
+        uint256 maxAmountPerUserInCurrentTree; // max amount per user in the current tree
+    }
+
     // Time buffer for the admin to withdraw LOOKS tokens if the contract becomes paused
     uint256 public constant BUFFER_ADMIN_WITHDRAW = 3 days;
 
@@ -23,12 +29,6 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
 
     // LooksRare token
     IERC20 public immutable looksRareToken;
-
-    struct TreeParameter {
-        address safeGuard; // address of the safe guard (e.g., address(0))
-        bytes32 merkleRoot; // current merkle root
-        uint256 maxAmountPerUserInCurrentTree; // max amount per user in the current tree
-    }
 
     // Keeps track of number of trees existing in parallel
     uint8 public numberTrees;
@@ -45,11 +45,11 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
     // Total amount claimed by user (in LOOKS)
     mapping(address => mapping(uint8 => uint256)) public amountClaimedByUserPerTreeId;
 
-    // Checks whether a merkle root was used
-    mapping(bytes32 => bool) public merkleRootUsed;
-
     // Check whether safe guard address was used
     mapping(address => bool) public safeGuardUsed;
+
+    // Checks whether a merkle root was used
+    mapping(bytes32 => bool) public merkleRootUsed;
 
     event Claim(address user, uint256 rewardRound, uint256 totalAmount, uint8[] treeIds, uint256[] amounts);
     event NewTree(uint8 treeId);
@@ -76,7 +76,10 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
         uint256[] calldata amounts,
         bytes32[][] calldata merkleProofs
     ) external whenNotPaused nonReentrant {
-        require(treeIds.length == amounts.length && merkleProofs.length == treeIds.length, "Rewards: Wrong lengths");
+        require(
+            treeIds.length > 0 && treeIds.length == amounts.length && merkleProofs.length == treeIds.length,
+            "Rewards: Wrong lengths"
+        );
 
         uint256 amountToTransfer;
         uint256[] memory adjustedAmounts = new uint256[](amounts.length);
@@ -116,10 +119,10 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
         bytes32[][] calldata merkleProofsSafeGuards
     ) external onlyOwner {
         require(
-            treeIds.length == merkleRoots.length &&
+            treeIds.length > 0 &&
+                treeIds.length == merkleRoots.length &&
                 treeIds.length == maxAmountsPerUser.length &&
-                treeIds.length == merkleProofsSafeGuards.length &&
-                merkleRoots.length > 0,
+                treeIds.length == merkleProofsSafeGuards.length,
             "Owner: Wrong lengths"
         );
 
@@ -147,7 +150,7 @@ contract MultiRewardsDistributor is Pausable, ReentrancyGuard, Ownable {
      * @param safeGuard address of a safe guard user (e.g., address(0), address(1))
      * @dev Only for owner.
      */
-    function addNewTree(address safeGuard) public onlyOwner {
+    function addNewTree(address safeGuard) external onlyOwner {
         require(!safeGuardUsed[safeGuard], "Owner: Safe guard already used");
         safeGuardUsed[safeGuard] = true;
         treeParameters[numberTrees].safeGuard = safeGuard;
