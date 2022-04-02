@@ -57,8 +57,8 @@ describe("MultiRewardsDistributor", () => {
   async function initialSetUpTree0(): Promise<MerkleTree> {
     await multiRewardsDistributor.connect(admin).unpauseDistribution();
     await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
-    let [tree, hexRoot] = createMerkleTree(jsonTree0);
-    let hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+    const [tree, hexRoot] = createMerkleTree(jsonTree0);
+    const hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
     await multiRewardsDistributor
       .connect(admin)
       .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
@@ -124,7 +124,7 @@ describe("MultiRewardsDistributor", () => {
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("10000"));
 
       [tree, hexRoot] = createMerkleTree(jsonTree0Round2);
-      let hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+      const hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
 
       let tx = await multiRewardsDistributor
         .connect(admin)
