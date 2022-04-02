@@ -2,6 +2,7 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import MerkleTree from "merkletreejs";
 
 import { increaseTo } from "./helpers/block-traveller";
 import { computeHash, createMerkleTree } from "./helpers/cryptography";
@@ -53,6 +54,17 @@ describe("MultiRewardsDistributor", () => {
     "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("500").toString(),
   };
 
+  async function initialSetUpTree0(): Promise<MerkleTree> {
+    await multiRewardsDistributor.connect(admin).unpauseDistribution();
+    await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
+    let [tree, hexRoot] = createMerkleTree(jsonTree0);
+    let hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+    await multiRewardsDistributor
+      .connect(admin)
+      .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
+    return tree;
+  }
+
   beforeEach(async () => {
     accounts = await ethers.getSigners();
     admin = accounts[0];
@@ -72,18 +84,9 @@ describe("MultiRewardsDistributor", () => {
 
   describe("#1 - Scenario tests", async () => {
     it("Claim (Single tree)- Users can claim", async () => {
-      let tx = await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
-      await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(0);
-
-      let [tree, hexRoot] = createMerkleTree(jsonTree0);
-      let hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
-
-      tx = await multiRewardsDistributor
-        .connect(admin)
-        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
-      await expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("1");
-
-      await multiRewardsDistributor.connect(admin).unpauseDistribution();
+      // Initial setup for tree 0
+      let tree = await initialSetUpTree0();
+      let hexRoot = tree.getHexRoot();
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(jsonTree0))) {
@@ -102,7 +105,7 @@ describe("MultiRewardsDistributor", () => {
           assert.equal(claimStatus[1][0].toString(), value);
 
           // User claims
-          tx = await multiRewardsDistributor.connect(signedUser).claim([0], [value], [hexProof]);
+          const tx = await multiRewardsDistributor.connect(signedUser).claim([0], [value], [hexProof]);
           await expect(tx).to.emit(multiRewardsDistributor, "Claim").withArgs(user, "1", value, [0], [value]);
 
           // Proof if still valid but amount is adjusted accordingly
@@ -121,9 +124,9 @@ describe("MultiRewardsDistributor", () => {
       await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("10000"));
 
       [tree, hexRoot] = createMerkleTree(jsonTree0Round2);
-      hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+      let hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
 
-      tx = await multiRewardsDistributor
+      let tx = await multiRewardsDistributor
         .connect(admin)
         .updateTradingRewards([0], [hexRoot], [parseEther("8000")], [hexSafeGuardProof]);
       await expect(tx).to.emit(multiRewardsDistributor, "UpdateTradingRewards").withArgs("2");
@@ -277,16 +280,96 @@ describe("MultiRewardsDistributor", () => {
 
   describe("#2 - Revertions of user functions", async () => {
     it("Cannot claim if array lengthes differ", async () => {
-      //
+      // Initial setup
+      const tree = await initialSetUpTree0();
+      // Compute the proof for the user
+      const hexProof = tree.getHexProof(computeHash(accounts[1].address, parseEther("5000").toString()), 1);
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0, 1], [parseEther("5000")], [hexProof])
+      ).to.be.revertedWith("Rewards: Wrong lengths");
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000"), parseEther("1")], [hexProof])
+      ).to.be.revertedWith("Rewards: Wrong lengths");
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [hexProof, hexProof])
+      ).to.be.revertedWith("Rewards: Wrong lengths");
     });
+
     it("Cannot claim twice", async () => {
-      //
+      // Initial setup
+      const tree = await initialSetUpTree0();
+      // Compute the proof for the user
+      const hexProof = tree.getHexProof(computeHash(accounts[1].address, parseEther("5000").toString()), 1);
+      await multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [hexProof]);
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [hexProof])
+      ).to.be.revertedWith("Rewards: Already claimed");
     });
+
+    it("Cannot claim if paused or tree nonexistent", async () => {
+      const randomProof = [
+        "0xe9cb62a4a45543a0c652e488f81c3baa93c972fd0c6059a7897348da7ed660ce",
+        "0xe5db38278b372bf1d0ad4db5642f57f0b9212ddb6b43d62d449d34245c71b2c8",
+      ];
+
+      // Paused
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [randomProof])
+      ).to.be.revertedWith("Pausable: paused");
+
+      await multiRewardsDistributor.connect(admin).unpauseDistribution();
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [randomProof])
+      ).to.be.revertedWith("Rewards: Tree nonexistent");
+    });
+
     it("Cannot claim with wrong proofs, if not in the tree, or someone's else proof", async () => {
-      //
+      // Initial setup
+      const tree = await initialSetUpTree0();
+      // Compute the proof for the user 1
+      const hexProof = tree.getHexProof(computeHash(accounts[1].address, parseEther("5000").toString()), 1);
+
+      // Amount matches the proof but not the user
+      await expect(
+        multiRewardsDistributor.connect(accounts[2]).claim([0], [parseEther("5000")], [hexProof])
+      ).to.be.revertedWith("Rewards: Invalid proof");
+
+      // Amount matches the user but it is the wrong proof
+      await expect(
+        multiRewardsDistributor.connect(accounts[2]).claim([0], [parseEther("3000")], [hexProof])
+      ).to.be.revertedWith("Rewards: Invalid proof");
+
+      await multiRewardsDistributor.connect(admin).addNewTree(ONE_ADDRESS);
+
+      // Wrong tree
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([1], [parseEther("5000")], [hexProof])
+      ).to.be.revertedWith("Rewards: Invalid proof");
     });
+
     it("Cannot claim if more than tree limit", async () => {
-      //
+      await multiRewardsDistributor.connect(admin).unpauseDistribution();
+      await multiRewardsDistributor.connect(admin).addNewTree(ZERO_ADDRESS);
+
+      const [tree, hexRoot] = createMerkleTree(jsonTree0);
+      const hexSafeGuardProofTree0 = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+
+      // Maximum amount is set at 5000 LOOKS - 1 wei of LOOKS
+      await multiRewardsDistributor
+        .connect(admin)
+        .updateTradingRewards([0], [hexRoot], [parseEther("5000").sub("1")], [hexSafeGuardProofTree0]);
+
+      // Compute the proof for the user 1
+      const hexProof = tree.getHexProof(computeHash(accounts[1].address, parseEther("5000").toString()), 1);
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [hexProof])
+      ).to.be.revertedWith("Rewards: Amount higher than max");
     });
   });
 
