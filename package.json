@@ -4,7 +4,7 @@
   "description": "LooksRare core staking contracts",
   "author": "LooksRare",
   "license": "MIT",
-  "private": true,
+  "private": false,
   "files": [
     "/abis/*.json",
     "/contracts/*.sol",
