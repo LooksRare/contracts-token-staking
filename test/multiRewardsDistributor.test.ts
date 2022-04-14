@@ -18,6 +18,7 @@ describe("MultiRewardsDistributor", () => {
 
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
   const ONE_ADDRESS = "0x0000000000000000000000000000000000000001";
+  const TWO_ADDRESS = "0x0000000000000000000000000000000000000002";
 
   // Safe Guard + Users 1 to 4
   const jsonTree0: Record<string, string> = {
@@ -47,11 +48,17 @@ describe("MultiRewardsDistributor", () => {
 
   // Safe Guard (ONE_ADDRESS) + Users 1 to 4 (user 4 is new)
   const jsonTree1Round2: Record<string, string> = {
-    "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
+    "0x0000000000000000000000000000000000000001": parseEther("1").toString(), // Safe Guard address
     "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("1000").toString(),
     "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("800").toString(),
     "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("600").toString(),
     "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("500").toString(),
+  };
+
+  // Safe Guard (ONE_ADDRESS) + Users 1
+  const jsonTree2: Record<string, string> = {
+    "0x0000000000000000000000000000000000000002": parseEther("1").toString(), // Safe Guard address
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("200").toString(),
   };
 
   async function initialSetUpTree0(): Promise<MerkleTree> {
@@ -78,8 +85,8 @@ describe("MultiRewardsDistributor", () => {
     multiRewardsDistributor = await MultiRewardsDistributor.deploy(looksRareToken.address);
     await multiRewardsDistributor.deployed();
 
-    // Transfer 10k LOOKS to the MultiRewardsDistributor contract
-    await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("10000"));
+    // Transfer 20,000 LOOKS to the MultiRewardsDistributor contract
+    await looksRareToken.connect(admin).transfer(multiRewardsDistributor.address, parseEther("20000"));
   });
 
   describe("#1 - Scenario tests", async () => {
@@ -201,13 +208,10 @@ describe("MultiRewardsDistributor", () => {
       tx = await multiRewardsDistributor.connect(admin).addNewTree(ONE_ADDRESS);
       await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(1);
 
-      const [tree0, hexRoot0] = createMerkleTree(jsonTree0);
-      const [tree1, hexRoot1] = createMerkleTree(jsonTree1);
-      const hexSafeGuardProofTree0 = tree0.getHexProof(
-        computeHash(ZERO_ADDRESS, parseEther("1").toString()),
-        Number(0)
-      );
-      const hexSafeGuardProofTree1 = tree1.getHexProof(computeHash(ONE_ADDRESS, parseEther("1").toString()), Number(0));
+      let [tree0, hexRoot0] = createMerkleTree(jsonTree0);
+      let [tree1, hexRoot1] = createMerkleTree(jsonTree1);
+      let hexSafeGuardProofTree0 = tree0.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+      let hexSafeGuardProofTree1 = tree1.getHexProof(computeHash(ONE_ADDRESS, parseEther("1").toString()), Number(0));
 
       await multiRewardsDistributor
         .connect(admin)
@@ -223,18 +227,18 @@ describe("MultiRewardsDistributor", () => {
 
       // 1.1 User1 claims (accounts 1 --> position 1 in both trees)
       let user = accounts[1].address;
-      let value0 = parseEther("5000").toString();
-      let value1 = parseEther("500").toString();
-      const totalValue = parseEther("5500");
-      let hexProof0 = tree0.getHexProof(computeHash(user, value0), 1);
-      let hexProof1 = tree1.getHexProof(computeHash(user, value1), 1);
-      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0), hexRoot0));
-      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1), hexRoot1));
+      let value0 = parseEther("5000");
+      let value1 = parseEther("500");
+      let totalValue = value0.add(value1);
+      let hexProof0 = tree0.getHexProof(computeHash(user, value0.toString()), 1);
+      let hexProof1 = tree1.getHexProof(computeHash(user, value1.toString()), 1);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0.toString()), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1.toString()), hexRoot1));
       let claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
       assert.isTrue(claimStatus[0][0]);
       assert.isTrue(claimStatus[0][1]);
-      assert.equal(claimStatus[1][0].toString(), value0);
-      assert.equal(claimStatus[1][1].toString(), value1);
+      assert.deepEqual(claimStatus[1][0], value0);
+      assert.deepEqual(claimStatus[1][1], value1);
 
       // User claims
       tx = await multiRewardsDistributor.connect(accounts[1]).claim([0, 1], [value0, value1], [hexProof0, hexProof1]);
@@ -245,17 +249,17 @@ describe("MultiRewardsDistributor", () => {
 
       // 1.2 User2 claims in 2 parts
       user = accounts[2].address;
-      value0 = parseEther("3000").toString();
-      value1 = parseEther("300").toString();
-      hexProof0 = tree0.getHexProof(computeHash(user, value0), 2);
-      hexProof1 = tree1.getHexProof(computeHash(user, value1), 2);
-      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0), hexRoot0));
-      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1), hexRoot1));
+      value0 = parseEther("3000");
+      value1 = parseEther("300");
+      hexProof0 = tree0.getHexProof(computeHash(user, value0.toString()), 2);
+      hexProof1 = tree1.getHexProof(computeHash(user, value1.toString()), 2);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0.toString()), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1.toString()), hexRoot1));
       claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
       assert.isTrue(claimStatus[0][0]);
       assert.isTrue(claimStatus[0][1]);
-      assert.equal(claimStatus[1][0].toString(), value0);
-      assert.equal(claimStatus[1][1].toString(), value1);
+      assert.deepEqual(claimStatus[1][0], value0);
+      assert.deepEqual(claimStatus[1][1], value1);
 
       // User2 claims the tree 1 first
       tx = await multiRewardsDistributor.connect(accounts[2]).claim([1], [value1], [hexProof1]);
@@ -269,12 +273,124 @@ describe("MultiRewardsDistributor", () => {
 
       /** 2. Set up for second round
        */
+      [tree0, hexRoot0] = createMerkleTree(jsonTree0Round2);
+      [tree1, hexRoot1] = createMerkleTree(jsonTree1Round2);
+      hexSafeGuardProofTree0 = tree0.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+      hexSafeGuardProofTree1 = tree1.getHexProof(computeHash(ONE_ADDRESS, parseEther("1").toString()), Number(0));
+
+      await multiRewardsDistributor
+        .connect(admin)
+        .updateTradingRewards(
+          [0, 1],
+          [hexRoot0, hexRoot1],
+          [parseEther("8000"), parseEther("1000")],
+          [hexSafeGuardProofTree0, hexSafeGuardProofTree1]
+        );
 
       /** 3. Round 2 - Claiming start
        */
 
+      // 3.1 User1 claims (accounts 1 --> position 1 in both trees)
+      user = accounts[1].address;
+      value0 = parseEther("8000");
+      value1 = parseEther("1000");
+      hexProof0 = tree0.getHexProof(computeHash(user, value0.toString()), 1);
+      hexProof1 = tree1.getHexProof(computeHash(user, value1.toString()), 1);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0.toString()), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1.toString()), hexRoot1));
+
+      let amountClaimedTree0 = await multiRewardsDistributor.amountClaimedByUserPerTreeId(user, 0);
+      let amountClaimedTree1 = await multiRewardsDistributor.amountClaimedByUserPerTreeId(user, 1);
+      totalValue = value0.add(value1).sub(amountClaimedTree0).sub(amountClaimedTree1);
+
+      claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
+      assert.isTrue(claimStatus[0][0]);
+      assert.isTrue(claimStatus[0][1]);
+      assert.equal(claimStatus[1][0].toString(), value0.sub(amountClaimedTree0));
+      assert.equal(claimStatus[1][1].toString(), value1.sub(amountClaimedTree1));
+
+      // User claims
+      tx = await multiRewardsDistributor.connect(accounts[1]).claim([0, 1], [value0, value1], [hexProof0, hexProof1]);
+      await expect(tx)
+        .to.emit(multiRewardsDistributor, "Claim")
+        .withArgs(user, "2", totalValue, [0, 1], [value0.sub(amountClaimedTree0), value1.sub(amountClaimedTree1)]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, totalValue);
+
+      // 3.2 User2 claims (accounts 2 --> position 2 in both trees)
+      user = accounts[2].address;
+      value0 = parseEther("6000");
+      value1 = parseEther("800");
+      hexProof0 = tree0.getHexProof(computeHash(user, value0.toString()), 2);
+      hexProof1 = tree1.getHexProof(computeHash(user, value1.toString()), 2);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0.toString()), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1.toString()), hexRoot1));
+      amountClaimedTree0 = await multiRewardsDistributor.amountClaimedByUserPerTreeId(user, 0);
+      amountClaimedTree1 = await multiRewardsDistributor.amountClaimedByUserPerTreeId(user, 1);
+      totalValue = value0.add(value1).sub(amountClaimedTree0).sub(amountClaimedTree1);
+
+      claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
+      assert.isTrue(claimStatus[0][0]);
+      assert.isTrue(claimStatus[0][1]);
+      assert.equal(claimStatus[1][0].toString(), value0.sub(amountClaimedTree0));
+      assert.equal(claimStatus[1][1].toString(), value1.sub(amountClaimedTree1));
+
+      // User claims
+      tx = await multiRewardsDistributor.connect(accounts[2]).claim([0, 1], [value0, value1], [hexProof0, hexProof1]);
+      await expect(tx)
+        .to.emit(multiRewardsDistributor, "Claim")
+        .withArgs(user, "2", totalValue, [0, 1], [value0.sub(amountClaimedTree0), value1.sub(amountClaimedTree1)]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, totalValue);
+
+      // 3.3 User3 claims (accounts 3 --> position 3 in both trees)
+      user = accounts[3].address;
+      value0 = parseEther("3000");
+      value1 = parseEther("600");
+      hexProof0 = tree0.getHexProof(computeHash(user, value0.toString()), 3);
+      hexProof1 = tree1.getHexProof(computeHash(user, value1.toString()), 3);
+      assert.isTrue(tree0.verify(hexProof0, computeHash(user, value0.toString()), hexRoot0));
+      assert.isTrue(tree1.verify(hexProof1, computeHash(user, value1.toString()), hexRoot1));
+      amountClaimedTree0 = await multiRewardsDistributor.amountClaimedByUserPerTreeId(user, 0);
+      amountClaimedTree1 = await multiRewardsDistributor.amountClaimedByUserPerTreeId(user, 1);
+      totalValue = value0.add(value1).sub(amountClaimedTree0).sub(amountClaimedTree1);
+
+      claimStatus = await multiRewardsDistributor.canClaim(user, [0, 1], [value0, value1], [hexProof0, hexProof1]);
+      assert.isTrue(claimStatus[0][0]);
+      assert.isTrue(claimStatus[0][1]);
+      assert.equal(claimStatus[1][0].toString(), value0.sub(amountClaimedTree0));
+      assert.equal(claimStatus[1][1].toString(), value1.sub(amountClaimedTree1));
+
+      // User claims
+      tx = await multiRewardsDistributor.connect(accounts[3]).claim([0, 1], [value0, value1], [hexProof0, hexProof1]);
+      await expect(tx)
+        .to.emit(multiRewardsDistributor, "Claim")
+        .withArgs(user, "2", totalValue, [0, 1], [value0.sub(amountClaimedTree0), value1.sub(amountClaimedTree1)]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, totalValue);
+
       /** 4. Set up for third tree and third round with only 1 tree updated
        */
+
+      tx = await multiRewardsDistributor.connect(admin).addNewTree(TWO_ADDRESS);
+      await expect(tx).to.emit(multiRewardsDistributor, "NewTree").withArgs(2);
+
+      const [tree2, hexRoot2] = createMerkleTree(jsonTree2);
+      const hexSafeGuardProofTree2 = tree2.getHexProof(computeHash(TWO_ADDRESS, parseEther("1").toString()), Number(0));
+
+      await multiRewardsDistributor
+        .connect(admin)
+        .updateTradingRewards([2], [hexRoot2], [parseEther("200")], [hexSafeGuardProofTree2]);
+
+      user = accounts[1].address;
+      const value2 = parseEther("200");
+      const hexProof2 = tree2.getHexProof(computeHash(user, value2.toString()), 1);
+      assert.isTrue(tree2.verify(hexProof2, computeHash(user, value2.toString()), hexRoot2));
+      claimStatus = await multiRewardsDistributor.canClaim(user, [2], [value2], [hexProof2]);
+      assert.isTrue(claimStatus[0][0]);
+      assert.equal(claimStatus[1][0].toString(), value2);
+
+      // User claims
+      tx = await multiRewardsDistributor.connect(accounts[1]).claim([2], [value2], [hexProof2]);
+      await expect(tx).to.emit(multiRewardsDistributor, "Claim").withArgs(user, "3", value2, [2], [value2]);
+      await expect(tx).to.emit(looksRareToken, "Transfer").withArgs(multiRewardsDistributor.address, user, value2);
     });
   });
 
@@ -370,6 +486,57 @@ describe("MultiRewardsDistributor", () => {
       await expect(
         multiRewardsDistributor.connect(accounts[1]).claim([0], [parseEther("5000")], [hexProof])
       ).to.be.revertedWith("Rewards: Amount higher than max");
+    });
+
+    it("View - View function works as expected", async () => {
+      // Initial setup for tree 0
+      const tree = await initialSetUpTree0();
+      const hexProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), 0);
+
+      let result = await multiRewardsDistributor.canClaim(
+        ZERO_ADDRESS,
+        [0, 1],
+        [parseEther("1")],
+        [hexProof, hexProof]
+      );
+      assert.isFalse(result[0][0]);
+      assert.deepEqual(result[1][0], constants.Zero);
+
+      result = await multiRewardsDistributor.canClaim(
+        ZERO_ADDRESS,
+        [0],
+        [parseEther("1"), parseEther("1")],
+        [hexProof, hexProof]
+      );
+
+      assert.isFalse(result[0][0]);
+      assert.isFalse(result[0][1]);
+      assert.deepEqual(result[1][0], constants.Zero);
+      assert.deepEqual(result[1][1], constants.Zero);
+
+      result = await multiRewardsDistributor.canClaim(
+        ZERO_ADDRESS,
+        [0, 0],
+        [parseEther("1"), parseEther("1")],
+        [hexProof, hexProof]
+      );
+
+      assert.isTrue(result[0][0]);
+      assert.isTrue(result[0][1]);
+      assert.deepEqual(result[1][0], parseEther("1"));
+      assert.deepEqual(result[1][1], parseEther("1"));
+
+      result = await multiRewardsDistributor.canClaim(
+        ZERO_ADDRESS,
+        [1, 0],
+        [parseEther("1"), parseEther("1")],
+        [hexProof, hexProof]
+      );
+
+      assert.isFalse(result[0][0]);
+      assert.isTrue(result[0][1]);
+      assert.deepEqual(result[1][0], constants.Zero);
+      assert.deepEqual(result[1][1], parseEther("1"));
     });
   });
 
