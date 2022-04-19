@@ -395,6 +395,42 @@ describe("MultiRewardsDistributor", () => {
   });
 
   describe("#2 - Revertions of user functions", async () => {
+    it("Underflow revertions", async () => {
+      let tree = await initialSetUpTree0();
+      let hexRoot;
+
+      const user = accounts[1];
+      let expectedAmountToReceive = parseEther("5000");
+      let hexProof = tree.getHexProof(computeHash(user.address, expectedAmountToReceive.toString()), 1);
+
+      const tx = await multiRewardsDistributor.connect(accounts[1]).claim([0], [expectedAmountToReceive], [hexProof]);
+      await expect(tx)
+        .to.emit(multiRewardsDistributor, "Claim")
+        .withArgs(user.address, "1", expectedAmountToReceive, [0], [expectedAmountToReceive]);
+
+      // New amount for accounts[1] is inferior to previous amount claimed
+      const jsonTree0Round2: Record<string, string> = {
+        "0x0000000000000000000000000000000000000000": parseEther("1").toString(), // Safe Guard address
+        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("30").toString(),
+      };
+
+      [tree, hexRoot] = createMerkleTree(jsonTree0Round2);
+      const hexSafeGuardProof = tree.getHexProof(computeHash(ZERO_ADDRESS, parseEther("1").toString()), Number(0));
+      await multiRewardsDistributor
+        .connect(admin)
+        .updateTradingRewards([0], [hexRoot], [parseEther("5000")], [hexSafeGuardProof]);
+
+      expectedAmountToReceive = parseEther("30");
+      hexProof = tree.getHexProof(computeHash(user.address, expectedAmountToReceive.toString()), 1);
+
+      // Underflow revertions don't emit message
+      await expect(multiRewardsDistributor.connect(user).claim([0], [expectedAmountToReceive], [hexProof])).to.be
+        .reverted;
+
+      await expect(multiRewardsDistributor.canClaim(user.address, [0], [expectedAmountToReceive], [hexProof])).to.be
+        .reverted;
+    });
+
     it("Cannot claim if array lengthes differ", async () => {
       // Initial setup
       const tree = await initialSetUpTree0();
