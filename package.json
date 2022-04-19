@@ -1,7 +1,7 @@
 {
-  "name": "looksrare-staking",
+  "name": "@looksrare/contracts-token-staking",
   "version": "1.0.0",
-  "description": "LooksRare core staking contracts",
+  "description": "LooksRare staking and other token-related smart contracts",
   "author": "LooksRare",
   "license": "MIT",
   "private": false,
@@ -15,10 +15,10 @@
     "looksrare"
   ],
   "homepage": "https://looksrare.org/",
-  "bugs": "https://github.com/LooksRare/looksrare-staking/issues",
+  "bugs": "https://github.com/LooksRare/contracts-token-staking/issues",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LooksRare/looksrare-staking.git"
+    "url": "https://github.com/LooksRare/contracts-token-staking.git"
   },
   "scripts": {
     "compile": "hardhat compile",
