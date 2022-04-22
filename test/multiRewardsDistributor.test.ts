@@ -395,6 +395,31 @@ describe("MultiRewardsDistributor", () => {
   });
 
   describe("#2 - Revertions of user functions", async () => {
+    it("Cannot double claim", async () => {
+      const tree = await initialSetUpTree0();
+      const user = accounts[1];
+      const expectedAmountToReceive = parseEther("5000");
+      const hexProof = tree.getHexProof(computeHash(user.address, expectedAmountToReceive.toString()), 1);
+
+      await expect(
+        multiRewardsDistributor
+          .connect(accounts[1])
+          .claim([0, 0], [expectedAmountToReceive, expectedAmountToReceive], [hexProof, hexProof])
+      ).to.be.revertedWith("Rewards: Already claimed");
+
+      await expect(
+        multiRewardsDistributor
+          .connect(accounts[1])
+          .claim([0, 1], [expectedAmountToReceive, expectedAmountToReceive], [hexProof, hexProof])
+      ).to.be.revertedWith("Rewards: Tree nonexistent");
+
+      await multiRewardsDistributor.connect(accounts[1]).claim([0], [expectedAmountToReceive], [hexProof]);
+
+      await expect(
+        multiRewardsDistributor.connect(accounts[1]).claim([0], [expectedAmountToReceive], [hexProof])
+      ).to.be.revertedWith("Rewards: Already claimed");
+    });
+
     it("Underflow revertions", async () => {
       let tree = await initialSetUpTree0();
       let hexRoot;
