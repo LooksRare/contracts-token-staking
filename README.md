@@ -6,13 +6,11 @@ This project contains all smart contracts used for staking and other token-relat
 
 ## Installation
 
-```bash
+```shell
+# Yarn
 yarn add --dev @looksrare/contracts-token-staking
-```
 
-or
-
-```bash
+# NPM
 npm install @looksrare/contracts-token-staking --save-dev
 ```
 
