@@ -8,10 +8,10 @@ This project contains all smart contracts used for staking and other token-relat
 
 ```shell
 # Yarn
-yarn add --dev @looksrare/contracts-token-staking
+yarn add @looksrare/contracts-token-staking
 
 # NPM
-npm install @looksrare/contracts-token-staking --save-dev
+npm install @looksrare/contracts-token-staking
 ```
 
 ## NPM package
