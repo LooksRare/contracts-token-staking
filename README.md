@@ -1,4 +1,4 @@
-# LooksRare Staking
+# @looksrare/contracts-token-staking
 
 ## Description
 
