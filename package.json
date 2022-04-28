@@ -20,6 +20,10 @@
     "type": "git",
     "url": "https://github.com/LooksRare/contracts-token-staking.git"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "scripts": {
     "compile": "hardhat compile",
     "compile:force": "hardhat compile --force",
@@ -30,7 +34,8 @@
     "test": "hardhat test",
     "test:gas": "REPORT_GAS=true hardhat test",
     "test:forge": "forge test",
-    "test:coverage": "hardhat coverage && hardhat compile --force"
+    "test:coverage": "hardhat coverage && hardhat compile --force",
+    "release": "release-it"
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.4.2"
@@ -66,6 +71,7 @@
     "merkletreejs": "^0.2.31",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
+    "release-it": "^14.14.2",
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.20",
     "ts-node": "^10.1.0",
