@@ -38,7 +38,7 @@
     "release": "release-it"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.4.2"
+    "@openzeppelin/contracts": "4.7.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.2.3",
