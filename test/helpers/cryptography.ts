@@ -36,7 +36,7 @@ export function createMerkleTree(tree: Record<string, string>): [MerkleTree, str
  * @dev Do not forget to multiply by 10e18 for decimals
  */
 export function computeDoubleHash(user: string, amount: string): Buffer {
-  return Buffer.from(keccak256(solidityKeccak256(["address", "uint256"], [user, amount])).slice(2), "hex");
+  return Buffer.from(keccak256(computeHash(user, amount)).slice(2), "hex");
 }
 
 /**
