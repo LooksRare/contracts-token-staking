@@ -74,6 +74,8 @@ describe("SeasonRewardsDistributor", () => {
 
         assert.equal((await seasonRewardsDistributor.amountClaimedByUser(user)).toString(), value);
 
+        assert.equal((await mockLooksRareToken.balanceOf(user)).toString(), value);
+
         // Cannot double claim
         await expect(seasonRewardsDistributor.connect(signedUser).claim(value, hexProof)).to.be.revertedWith(
           "AlreadyClaimed()"
@@ -127,6 +129,8 @@ describe("SeasonRewardsDistributor", () => {
         assert.deepEqual(claimStatus[1], constants.Zero);
 
         assert.equal((await seasonRewardsDistributor.amountClaimedByUser(user)).toString(), value);
+
+        assert.equal((await mockLooksRareToken.balanceOf(user)).toString(), value);
 
         // Cannot double claim
         await expect(seasonRewardsDistributor.connect(signedUser).claim(value, hexProof)).to.be.revertedWith(
