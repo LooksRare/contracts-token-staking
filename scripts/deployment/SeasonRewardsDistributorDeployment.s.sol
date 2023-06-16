@@ -31,7 +31,7 @@ contract SeasonRewardsDistributorDeployment is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        new SeasonRewardsDistributor(feeSharingSetter, weth);
+        new SeasonRewardsDistributor(looksRareToken, owner);
 
         vm.stopBroadcast();
     }
