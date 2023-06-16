@@ -52,6 +52,7 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
     /**
      * @notice Constructor
      * @param _looksRareToken address of the LooksRare token
+     * @param _owner address of the owner
      */
     constructor(address _looksRareToken, address _owner) OwnableTwoSteps(_owner) {
         looksRareToken = _looksRareToken;
