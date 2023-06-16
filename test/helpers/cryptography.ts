@@ -1,7 +1,7 @@
 import { MerkleTree } from "merkletreejs";
 import { utils } from "ethers/lib/ethers";
-/* eslint-disable node/no-extraneous-import */
-import { keccak256 } from "js-sha3";
+
+const { keccak256, solidityKeccak256 } = utils;
 
 /**
  * Compute the cryptographic hash using keccak256
@@ -10,7 +10,7 @@ import { keccak256 } from "js-sha3";
  * @dev Do not forget to multiply by 10e18 for decimals
  */
 export function computeHash(user: string, amount: string): Buffer {
-  return Buffer.from(utils.solidityKeccak256(["address", "uint256"], [user, amount]).slice(2), "hex");
+  return Buffer.from(solidityKeccak256(["address", "uint256"], [user, amount]).slice(2), "hex");
 }
 
 /**
@@ -36,7 +36,7 @@ export function createMerkleTree(tree: Record<string, string>): [MerkleTree, str
  * @dev Do not forget to multiply by 10e18 for decimals
  */
 export function computeDoubleHash(user: string, amount: string): Buffer {
-  return Buffer.from(utils.keccak256(utils.solidityKeccak256(["address", "uint256"], [user, amount])).slice(2), "hex");
+  return Buffer.from(keccak256(solidityKeccak256(["address", "uint256"], [user, amount])).slice(2), "hex");
 }
 
 /**
