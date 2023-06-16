@@ -326,6 +326,8 @@ describe("SeasonRewardsDistributor", () => {
       // Transfer funds to the mockLooksRareToken
       await mockLooksRareToken.connect(admin).transfer(seasonRewardsDistributor.address, depositAmount);
 
+      assert.equal((await mockLooksRareToken.balanceOf(admin.address)).toString(), parseEther("980000").toString());
+
       let tx = await seasonRewardsDistributor.connect(admin).pauseDistribution();
       await expect(tx).to.emit(seasonRewardsDistributor, "Paused");
 
@@ -347,6 +349,8 @@ describe("SeasonRewardsDistributor", () => {
 
       tx = await seasonRewardsDistributor.connect(admin).withdrawTokenRewards(depositAmount);
       await expect(tx).to.emit(seasonRewardsDistributor, "TokenWithdrawnOwner").withArgs(depositAmount);
+
+      assert.equal((await mockLooksRareToken.balanceOf(admin.address)).toString(), parseEther("990000").toString());
     });
 
     it("Owner - Owner cannot set twice the same Merkle Root", async () => {
