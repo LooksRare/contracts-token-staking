@@ -46,7 +46,6 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
     error AmountHigherThanMax();
     error InvalidProof();
     error MerkleRootAlreadyUsed();
-    error MerkleRootNotSet();
     error TooEarlyToWithdraw();
 
     /**
@@ -56,6 +55,7 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
      */
     constructor(address _looksRareToken, address _owner) OwnableTwoSteps(_owner) {
         looksRareToken = _looksRareToken;
+        merkleRootUsed[bytes32(0)] = true;
     }
 
     /**
@@ -165,12 +165,7 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
         // Compute the node and verify the merkle proof
         bytes32 node = keccak256(bytes.concat(keccak256(abi.encodePacked(user, amount))));
 
-        bytes32 merkleRoot = merkleRootOfRewardRound[currentRewardRound];
-        if (merkleRoot == bytes32(0)) {
-            revert MerkleRootNotSet();
-        }
-
-        bool canUserClaim = MerkleProof.verify(merkleProof, merkleRoot, node);
+        bool canUserClaim = MerkleProof.verify(merkleProof, merkleRootOfRewardRound[currentRewardRound], node);
 
         if ((!canUserClaim) || (hasUserClaimedForRewardRound[currentRewardRound][user])) {
             return (false, 0);
