@@ -4,13 +4,9 @@ import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import { increaseTo } from "./helpers/block-traveller";
-import { createMerkleTree } from "./helpers/cryptography";
+import { computeHash, createMerkleTree } from "./helpers/cryptography";
 
 const { parseEther } = utils;
-
-function computeHash(user: string, amount: string) {
-  return Buffer.from(utils.solidityKeccak256(["address", "uint256"], [user, amount]).slice(2), "hex");
-}
 
 describe("TradingRewardsDistributor", () => {
   let mockLooksRareToken: Contract;
