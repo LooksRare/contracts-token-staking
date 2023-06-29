@@ -39,7 +39,7 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
     mapping(uint256 => mapping(address => bool)) public hasUserClaimedForRewardRound;
 
     event RewardsClaim(address indexed user, uint256 indexed rewardRound, uint256 amount);
-    event UpdateTradingRewards(uint256 indexed rewardRound);
+    event UpdateSeasonRewards(uint256 indexed rewardRound);
     event TokenWithdrawnOwner(uint256 amount);
 
     error AlreadyClaimed();
@@ -91,11 +91,11 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
     }
 
     /**
-     * @notice Update trading rewards with a new merkle root
+     * @notice Update season rewards with a new merkle root
      * @dev It automatically increments the currentRewardRound
      * @param merkleRoot root of the computed merkle tree
      */
-    function updateTradingRewards(bytes32 merkleRoot, uint256 newMaximumAmountPerUser) external onlyOwner {
+    function updateSeasonRewards(bytes32 merkleRoot, uint256 newMaximumAmountPerUser) external onlyOwner {
         if (merkleRootUsed[merkleRoot]) {
             revert MerkleRootAlreadyUsed();
         }
@@ -105,7 +105,7 @@ contract SeasonRewardsDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps,
         merkleRootUsed[merkleRoot] = true;
         maximumAmountPerUserInCurrentTree = newMaximumAmountPerUser;
 
-        emit UpdateTradingRewards(currentRewardRound);
+        emit UpdateSeasonRewards(currentRewardRound);
     }
 
     /**
