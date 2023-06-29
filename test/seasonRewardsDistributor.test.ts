@@ -44,8 +44,8 @@ describe("SeasonRewardsDistributor", () => {
 
       let [tree, hexRoot] = createDoubleHashMerkleTree(json);
 
-      let tx = await seasonRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"));
-      await expect(tx).to.emit(seasonRewardsDistributor, "UpdateTradingRewards").withArgs("1");
+      let tx = await seasonRewardsDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"));
+      await expect(tx).to.emit(seasonRewardsDistributor, "UpdateSeasonRewards").withArgs("1");
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(json))) {
@@ -95,8 +95,8 @@ describe("SeasonRewardsDistributor", () => {
 
       [tree, hexRoot] = createDoubleHashMerkleTree(jsonRound2);
 
-      tx = await seasonRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("8000"));
-      await expect(tx).to.emit(seasonRewardsDistributor, "UpdateTradingRewards").withArgs("2");
+      tx = await seasonRewardsDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("8000"));
+      await expect(tx).to.emit(seasonRewardsDistributor, "UpdateSeasonRewards").withArgs("2");
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
@@ -186,8 +186,8 @@ describe("SeasonRewardsDistributor", () => {
         1
       );
 
-      // Owner adds trading rewards and unpause distribution
-      await seasonRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"));
+      // Owner adds season rewards and unpause distribution
+      await seasonRewardsDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"));
 
       // 1. Verify leafs for user1/user2 are matched in the tree with the computed root
       assert.isTrue(
@@ -310,8 +310,8 @@ describe("SeasonRewardsDistributor", () => {
         0
       );
 
-      // Owner adds trading rewards and unpause distribution
-      await seasonRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("4999.9999"));
+      // Owner adds season rewards and unpause distribution
+      await seasonRewardsDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("4999.9999"));
 
       await expect(
         seasonRewardsDistributor.connect(user1).claim(expectedAmountToReceiveForUser1, hexProof1)
@@ -364,10 +364,10 @@ describe("SeasonRewardsDistributor", () => {
 
       const [, hexRoot] = createDoubleHashMerkleTree(json);
 
-      await seasonRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"));
+      await seasonRewardsDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"));
 
       await expect(
-        seasonRewardsDistributor.connect(admin).updateTradingRewards(hexRoot, parseEther("5000"))
+        seasonRewardsDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"))
       ).to.be.revertedWith("MerkleRootAlreadyUsed()");
     });
   });
