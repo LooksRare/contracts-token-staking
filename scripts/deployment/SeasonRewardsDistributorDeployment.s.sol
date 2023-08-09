@@ -25,6 +25,10 @@ contract SeasonRewardsDistributorDeployment is Script {
             looksRareToken = 0x20A5A36ded0E4101C3688CBC405bBAAE58fE9eeC;
             owner = 0xF332533bF5d0aC462DC8511067A8122b4DcE2B57;
             deployerPrivateKey = vm.envUint("TESTNET_KEY");
+        } else if (chainId == 11155111) {
+            looksRareToken = 0xa68c2CaA3D45fa6EBB95aA706c70f49D3356824E;
+            owner = 0xF332533bF5d0aC462DC8511067A8122b4DcE2B57;
+            deployerPrivateKey = vm.envUint("TESTNET_KEY");
         } else {
             revert ChainIdInvalid(chainId);
         }
