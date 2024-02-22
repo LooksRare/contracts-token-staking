@@ -13,6 +13,7 @@ import {IBlast, GasMode, YieldMode} from "./interfaces/IBlast.sol";
 /**
  * @title ProtocolFeesDistributor
  * @notice It distributes protocol fees with rolling Merkle airdrops.
+ * @author YOLO Games Team
  */
 contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, LowLevelWETH {
     address private immutable WETH;
