@@ -58,7 +58,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
         WETH = _weth;
         merkleRootUsed[bytes32(0)] = true;
 
-        // IBlast(_blast).configure(YieldMode.CLAIMABLE, GasMode.CLAIMABLE, _owner);
+        IBlast(_blast).configure(YieldMode.CLAIMABLE, GasMode.CLAIMABLE, _owner);
     }
 
     /**

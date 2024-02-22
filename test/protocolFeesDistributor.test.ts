@@ -3,7 +3,6 @@ import { ethers, network } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import { increaseTo } from "./helpers/block-traveller";
 import { computeDoubleHash, createDoubleHashMerkleTree } from "./helpers/cryptography";
 
 const { parseEther } = utils;
@@ -27,12 +26,6 @@ describe("ProtocolFeesDistributor", () => {
       "0x4300000000000000000000000000000000000002"
     );
     await protocolFeesDistributor.deployed();
-
-    // Transfer funds to protocol fees distributor
-    await admin.sendTransaction({
-      to: protocolFeesDistributor.address,
-      value: parseEther("10000"),
-    });
   });
 
   describe("#1 - Regular claims work as expected", async () => {
@@ -47,8 +40,10 @@ describe("ProtocolFeesDistributor", () => {
 
       let [tree, hexRoot] = createDoubleHashMerkleTree(json);
 
-      let tx = await protocolFeesDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"));
-      await expect(tx).to.emit(protocolFeesDistributor, "UpdateSeasonRewards").withArgs("1");
+      let tx = await protocolFeesDistributor
+        .connect(admin)
+        .updateProtocolFeesDistribution(hexRoot, parseEther("5000"), { value: parseEther("10000") });
+      await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(json))) {
@@ -57,6 +52,8 @@ describe("ProtocolFeesDistributor", () => {
         if (signedUser === accounts[3]) {
           break;
         }
+
+        const beforeClaimBalance = await ethers.provider.getBalance(user);
 
         // Compute the proof for the user
         const hexProof = tree.getHexProof(computeDoubleHash(user, value), Number(index));
@@ -70,7 +67,10 @@ describe("ProtocolFeesDistributor", () => {
         assert.equal(claimStatus[1].toString(), value);
 
         tx = await protocolFeesDistributor.connect(signedUser).claim(value, hexProof);
-        await expect(tx).to.emit(protocolFeesDistributor, "RewardsClaim").withArgs(user, "1", value);
+        await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesClaimed").withArgs(user, "1", value);
+
+        const receipt = await tx.wait();
+        const txFee = receipt.gasUsed.mul(tx.gasPrice);
 
         claimStatus = await protocolFeesDistributor.canClaim(user, value, hexProof);
         assert.isFalse(claimStatus[0]);
@@ -78,7 +78,10 @@ describe("ProtocolFeesDistributor", () => {
 
         assert.equal((await protocolFeesDistributor.amountClaimedByUser(user)).toString(), value);
 
-        assert.equal((await ethers.provider.getBalance(user)).toString(), value);
+        assert.equal(
+          (await ethers.provider.getBalance(user)).toString(),
+          beforeClaimBalance.add(BigNumber.from(value)).sub(txFee).toString()
+        );
 
         // Cannot double claim
         await expect(protocolFeesDistributor.connect(signedUser).claim(value, hexProof)).to.be.revertedWith(
@@ -86,13 +89,7 @@ describe("ProtocolFeesDistributor", () => {
         );
       }
 
-      // Transfer funds to protocol fees distributor
-      await admin.sendTransaction({
-        to: protocolFeesDistributor.address,
-        value: parseEther("10000"),
-      });
-
-      // Users 1 to 4 (10k rewards added)
+      // Users 1 to 4 (10k protocol fees added)
       const jsonRound2 = {
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("8000").toString(),
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("6000").toString(),
@@ -102,8 +99,10 @@ describe("ProtocolFeesDistributor", () => {
 
       [tree, hexRoot] = createDoubleHashMerkleTree(jsonRound2);
 
-      tx = await protocolFeesDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("8000"));
-      await expect(tx).to.emit(protocolFeesDistributor, "UpdateSeasonRewards").withArgs("2");
+      tx = await protocolFeesDistributor
+        .connect(admin)
+        .updateProtocolFeesDistribution(hexRoot, parseEther("8000"), { value: parseEther("10000") });
+      await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("2");
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
@@ -112,6 +111,8 @@ describe("ProtocolFeesDistributor", () => {
         if (user === accounts[3].address) {
           break;
         }
+
+        const beforeClaimBalance = await ethers.provider.getBalance(user);
 
         // Compute the proof for the user
         const hexProof = tree.getHexProof(computeDoubleHash(user, value), Number(index));
@@ -129,7 +130,12 @@ describe("ProtocolFeesDistributor", () => {
         assert.deepEqual(claimStatus[1], expectedAmountToReceive);
 
         tx = await protocolFeesDistributor.connect(signedUser).claim(value, hexProof);
-        await expect(tx).to.emit(protocolFeesDistributor, "RewardsClaim").withArgs(user, "2", expectedAmountToReceive);
+        await expect(tx)
+          .to.emit(protocolFeesDistributor, "ProtocolFeesClaimed")
+          .withArgs(user, "2", expectedAmountToReceive);
+
+        const receipt = await tx.wait();
+        const txFee = receipt.gasUsed.mul(tx.gasPrice);
 
         claimStatus = await protocolFeesDistributor.canClaim(user, value, hexProof);
         assert.isFalse(claimStatus[0]);
@@ -137,7 +143,10 @@ describe("ProtocolFeesDistributor", () => {
 
         assert.equal((await protocolFeesDistributor.amountClaimedByUser(user)).toString(), value);
 
-        assert.equal((await ethers.provider.getBalance(user)).toString(), value);
+        assert.equal(
+          (await ethers.provider.getBalance(user)).toString(),
+          beforeClaimBalance.add(expectedAmountToReceive).sub(txFee).toString()
+        );
 
         // Cannot double claim
         await expect(protocolFeesDistributor.connect(signedUser).claim(value, hexProof)).to.be.revertedWith(
@@ -160,7 +169,7 @@ describe("ProtocolFeesDistributor", () => {
 
       tx = await protocolFeesDistributor.connect(lateClaimer).claim(expectedAmountToReceive, hexProof);
       await expect(tx)
-        .to.emit(protocolFeesDistributor, "RewardsClaim")
+        .to.emit(protocolFeesDistributor, "ProtocolFeesClaimed")
         .withArgs(lateClaimer.address, "2", expectedAmountToReceive);
     });
 
@@ -193,8 +202,8 @@ describe("ProtocolFeesDistributor", () => {
         1
       );
 
-      // Owner adds season rewards and unpause distribution
-      await protocolFeesDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"));
+      // Owner adds protocol fees and unpause distribution
+      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("5000"));
 
       // 1. Verify leafs for user1/user2 are matched in the tree with the computed root
       assert.isTrue(
@@ -313,8 +322,8 @@ describe("ProtocolFeesDistributor", () => {
         0
       );
 
-      // Owner adds season rewards and unpause distribution
-      await protocolFeesDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("4999.9999"));
+      // Owner adds protocol fees and unpause distribution
+      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("4999.9999"));
 
       await expect(
         protocolFeesDistributor.connect(user1).claim(expectedAmountToReceiveForUser1, hexProof1)
@@ -323,7 +332,7 @@ describe("ProtocolFeesDistributor", () => {
   });
 
   describe("#2 - Owner functions", async () => {
-    it("Owner - Owner cannot withdraw immediately after pausing", async () => {
+    it("Owner - Pause/Unpause/WithdrawETH", async () => {
       const depositAmount = parseEther("10000");
 
       // Transfer funds to protocol fees distributor
@@ -332,31 +341,38 @@ describe("ProtocolFeesDistributor", () => {
         value: depositAmount,
       });
 
-      assert.equal((await ethers.provider.getBalance(admin.address)).toString(), parseEther("980000").toString());
+      const beforeWithdrawBalance = await ethers.provider.getBalance(admin.address);
 
-      let tx = await protocolFeesDistributor.connect(admin).pauseDistribution();
+      let txFee = BigNumber.from(0);
+
+      let tx = await protocolFeesDistributor.connect(admin).pause();
       await expect(tx).to.emit(protocolFeesDistributor, "Paused");
 
-      tx = await protocolFeesDistributor.connect(admin).unpauseDistribution();
+      let receipt = await tx.wait();
+      txFee = txFee.add(receipt.gasUsed.mul(tx.gasPrice));
+
+      tx = await protocolFeesDistributor.connect(admin).unpause();
       await expect(tx).to.emit(protocolFeesDistributor, "Unpaused");
 
-      tx = await protocolFeesDistributor.connect(admin).pauseDistribution();
+      receipt = await tx.wait();
+      txFee = txFee.add(receipt.gasUsed.mul(tx.gasPrice));
+
+      tx = await protocolFeesDistributor.connect(admin).pause();
       await expect(tx).to.emit(protocolFeesDistributor, "Paused");
 
-      await expect(protocolFeesDistributor.connect(admin).withdrawTokenRewards(depositAmount)).to.be.revertedWith(
-        "TooEarlyToWithdraw()"
+      receipt = await tx.wait();
+      txFee = txFee.add(receipt.gasUsed.mul(tx.gasPrice));
+
+      tx = await protocolFeesDistributor.connect(admin).withdrawETH(depositAmount);
+      await expect(tx).to.emit(protocolFeesDistributor, "EthWithdrawn").withArgs(depositAmount);
+
+      receipt = await tx.wait();
+      txFee = txFee.add(receipt.gasUsed.mul(tx.gasPrice));
+
+      assert.equal(
+        (await ethers.provider.getBalance(admin.address)).toString(),
+        beforeWithdrawBalance.add(depositAmount).sub(txFee).toString()
       );
-
-      const lastPausedTimestamp = await protocolFeesDistributor.lastPausedTimestamp();
-      const BUFFER_ADMIN_WITHDRAW = await protocolFeesDistributor.BUFFER_ADMIN_WITHDRAW();
-
-      // Jump in time to the period where it becomes possible to claim
-      await increaseTo(lastPausedTimestamp.add(BUFFER_ADMIN_WITHDRAW).add(BigNumber.from("1")));
-
-      tx = await protocolFeesDistributor.connect(admin).withdrawTokenRewards(depositAmount);
-      await expect(tx).to.emit(protocolFeesDistributor, "TokenWithdrawnOwner").withArgs(depositAmount);
-
-      assert.equal((await ethers.provider.getBalance(admin.address)).toString(), parseEther("990000").toString());
     });
 
     it("Owner - Owner cannot set twice the same Merkle Root", async () => {
@@ -370,10 +386,10 @@ describe("ProtocolFeesDistributor", () => {
 
       const [, hexRoot] = createDoubleHashMerkleTree(json);
 
-      await protocolFeesDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"));
+      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("5000"));
 
       await expect(
-        protocolFeesDistributor.connect(admin).updateSeasonRewards(hexRoot, parseEther("5000"))
+        protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("5000"))
       ).to.be.revertedWith("MerkleRootAlreadyUsed()");
     });
   });
