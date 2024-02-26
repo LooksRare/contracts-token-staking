@@ -9,6 +9,7 @@ import {ReentrancyGuard} from "@looksrare/contracts-libs/contracts/ReentrancyGua
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import {IBlast, GasMode, YieldMode} from "./interfaces/IBlast.sol";
+import {IBlastPoints} from "./interfaces/IBlastPoints.sol";
 
 /**
  * @title ProtocolFeesDistributor
@@ -50,16 +51,21 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
      * @param _weth address of the WETH token
      * @param _owner address of the owner
      * @param _blast address of the BLAST precompile
+     * @param _blastPoints The Blast points configuration.
+     * @param _blastPointsOperator The Blast points operator.
      */
     constructor(
         address _weth,
         address _owner,
-        address _blast
+        address _blast,
+        address _blastPoints,
+        address _blastPointsOperator
     ) OwnableTwoSteps(_owner) {
         WETH = _weth;
         merkleRootUsed[bytes32(0)] = true;
 
         IBlast(_blast).configure(YieldMode.CLAIMABLE, GasMode.CLAIMABLE, _owner);
+        IBlastPoints(_blastPoints).configurePointsOperator(_blastPointsOperator);
     }
 
     /**

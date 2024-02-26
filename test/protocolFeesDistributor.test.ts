@@ -23,7 +23,9 @@ describe("ProtocolFeesDistributor", () => {
     protocolFeesDistributor = await ProtocolFeesDistributor.deploy(
       "0x4200000000000000000000000000000000000023",
       admin.address,
-      "0x4300000000000000000000000000000000000002"
+      "0x4300000000000000000000000000000000000002",
+      "0x2fc95838c71e76ec69ff817983BFf17c710F34E0",
+      admin.address
     );
     await protocolFeesDistributor.deployed();
   });
