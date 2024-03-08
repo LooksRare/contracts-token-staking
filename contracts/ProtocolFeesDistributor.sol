@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {LowLevelWETH} from "@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelWETH.sol";
-import {OwnableTwoSteps} from "@looksrare/contracts-libs/contracts/OwnableTwoSteps.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@looksrare/contracts-libs/contracts/Pausable.sol";
 import {ReentrancyGuard} from "@looksrare/contracts-libs/contracts/ReentrancyGuard.sol";
 
@@ -16,7 +16,9 @@ import {IBlastPoints} from "./interfaces/IBlastPoints.sol";
  * @notice It distributes protocol fees with rolling Merkle airdrops.
  * @author YOLO Games Team
  */
-contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, LowLevelWETH {
+contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, LowLevelWETH {
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
     address private immutable WETH;
 
     // Current round (users can only claim pending protocol fees for the current round)
@@ -50,6 +52,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
      * @notice Constructor
      * @param _weth address of the WETH token
      * @param _owner address of the owner
+     * @param _operator address of the operator
      * @param _blast address of the BLAST precompile
      * @param _blastPoints The Blast points configuration.
      * @param _blastPointsOperator The Blast points operator.
@@ -57,12 +60,17 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
     constructor(
         address _weth,
         address _owner,
+        address _operator,
         address _blast,
         address _blastPoints,
         address _blastPointsOperator
-    ) OwnableTwoSteps(_owner) {
+    ) {
         WETH = _weth;
         merkleRootUsed[bytes32(0)] = true;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        _grantRole(OPERATOR_ROLE, _owner);
+        _grantRole(OPERATOR_ROLE, _operator);
 
         IBlast(_blast).configure(YieldMode.CLAIMABLE, GasMode.CLAIMABLE, _owner);
         IBlastPoints(_blastPoints).configurePointsOperator(_blastPointsOperator);
@@ -113,7 +121,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
     function updateProtocolFeesDistribution(bytes32 merkleRoot, uint256 newMaximumAmountPerUser)
         external
         payable
-        onlyOwner
+        onlyRole(OPERATOR_ROLE)
     {
         if (merkleRootUsed[merkleRoot]) {
             revert MerkleRootAlreadyUsed();
@@ -130,14 +138,14 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
     /**
      * @notice Pause claim
      */
-    function pause() external onlyOwner whenNotPaused {
+    function pause() external onlyRole(OPERATOR_ROLE) whenNotPaused {
         _pause();
     }
 
     /**
      * @notice Unpause claim
      */
-    function unpause() external onlyOwner whenPaused {
+    function unpause() external onlyRole(OPERATOR_ROLE) whenPaused {
         _unpause();
     }
 
@@ -146,7 +154,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, OwnableTwoSteps, 
      * @dev It is for emergency purposes
      * @param amount amount to withdraw
      */
-    function withdrawETH(uint256 amount) external onlyOwner {
+    function withdrawETH(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _transferETHAndWrapIfFailWithGasLimit({_WETH: WETH, _to: msg.sender, _amount: amount, _gasLimit: gasleft()});
         emit EthWithdrawn(amount);
     }
