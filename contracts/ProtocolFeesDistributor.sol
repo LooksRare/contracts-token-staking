@@ -185,7 +185,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         bytes32[] calldata merkleProof
     ) internal view returns (bool, uint256) {
         // Compute the node and verify the merkle proof
-        bytes32 node = keccak256(bytes.concat(keccak256(abi.encodePacked(user, amount))));
+        bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(user, amount))));
 
         bool canUserClaim = MerkleProof.verify(merkleProof, merkleRootOfRound[currentRound], node);
 

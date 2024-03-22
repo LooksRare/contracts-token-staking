@@ -2,8 +2,7 @@ import { assert, expect } from "chai";
 import { ethers, network } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
-import { computeDoubleHash, createDoubleHashMerkleTree } from "./helpers/cryptography";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
 const { parseEther } = utils;
 
@@ -34,22 +33,22 @@ describe("ProtocolFeesDistributor", () => {
   describe("#1 - Regular claims work as expected", async () => {
     it("Claim - Users can claim", async () => {
       // Users 1 to 4
-      const json = {
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-      };
+      const values = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
+      ];
 
-      let [tree, hexRoot] = createDoubleHashMerkleTree(json);
+      let tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
       let tx = await protocolFeesDistributor
         .connect(admin)
-        .updateProtocolFeesDistribution(hexRoot, parseEther("5000"), { value: parseEther("10000") });
+        .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
 
       // All users except the 4th one claims
-      for (const [index, [user, value]] of Object.entries(Object.entries(json))) {
+      for (const [index, [user, value]] of tree.entries()) {
         const signedUser = accounts[Number(index) + 1];
 
         if (signedUser === accounts[3]) {
@@ -59,10 +58,10 @@ describe("ProtocolFeesDistributor", () => {
         const beforeClaimBalance = await ethers.provider.getBalance(user);
 
         // Compute the proof for the user
-        const hexProof = tree.getHexProof(computeDoubleHash(user, value), Number(index));
+        const hexProof = tree.getProof(index);
 
         // Verify leaf is matched in the tree with the computed root
-        assert.isTrue(tree.verify(hexProof, computeDoubleHash(user, value), hexRoot));
+        assert.isTrue(StandardMerkleTree.verify(tree.root, ["address", "uint"], [user, value], hexProof));
 
         // Check user status
         let claimStatus = await protocolFeesDistributor.canClaim(user, value, hexProof);
@@ -93,22 +92,22 @@ describe("ProtocolFeesDistributor", () => {
       }
 
       // Users 1 to 4 (10k protocol fees added)
-      const jsonRound2 = {
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("8000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("6000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("3000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("3000").toString(),
-      };
+      const values2 = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("8000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("6000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("3000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("3000").toString()],
+      ];
 
-      [tree, hexRoot] = createDoubleHashMerkleTree(jsonRound2);
+      tree = StandardMerkleTree.of(values2, ["address", "uint256"]);
 
       tx = await protocolFeesDistributor
         .connect(admin)
-        .updateProtocolFeesDistribution(hexRoot, parseEther("8000"), { value: parseEther("10000") });
+        .updateProtocolFeesDistribution(tree.root, parseEther("8000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("2");
 
       // All users except the 4th one claims
-      for (const [index, [user, value]] of Object.entries(Object.entries(jsonRound2))) {
+      for (const [index, [user, value]] of tree.entries()) {
         const signedUser = accounts[Number(index) + 1];
 
         if (user === accounts[3].address) {
@@ -118,10 +117,10 @@ describe("ProtocolFeesDistributor", () => {
         const beforeClaimBalance = await ethers.provider.getBalance(user);
 
         // Compute the proof for the user
-        const hexProof = tree.getHexProof(computeDoubleHash(user, value), Number(index));
+        const hexProof = tree.getProof(index);
 
         // Verify leaf is matched in the tree with the computed root
-        assert.isTrue(tree.verify(hexProof, computeDoubleHash(user, value), hexRoot));
+        assert.isTrue(StandardMerkleTree.verify(tree.root, ["address", "uint"], [user, value], hexProof));
 
         // Fetch the amount previous claimed by the user and deduct the amount they will receive
         const amountPreviouslyClaimed = await protocolFeesDistributor.amountClaimedByUser(user);
@@ -162,12 +161,17 @@ describe("ProtocolFeesDistributor", () => {
       const expectedAmountToReceive = parseEther("3000");
 
       // Compute the proof for the user4
-      const hexProof = tree.getHexProof(computeDoubleHash(lateClaimer.address, expectedAmountToReceive.toString()), 2);
+      const hexProof = tree.getProof([lateClaimer.address, expectedAmountToReceive.toString()]);
 
       // Verify leaf is matched in the tree with the computed root
 
       assert.isTrue(
-        tree.verify(hexProof, computeDoubleHash(lateClaimer.address, expectedAmountToReceive.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [lateClaimer.address, expectedAmountToReceive.toString()],
+          hexProof
+        )
       );
 
       tx = await protocolFeesDistributor.connect(lateClaimer).claim(expectedAmountToReceive, hexProof);
@@ -178,15 +182,15 @@ describe("ProtocolFeesDistributor", () => {
 
     it("Claim - Users cannot claim with wrong proofs", async () => {
       // Users 1 to 4
-      const json = {
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-      };
+      const values = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
+      ];
 
       // Compute tree
-      const [tree, hexRoot] = createDoubleHashMerkleTree(json);
+      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
       const user1 = accounts[1];
       const user2 = accounts[2];
@@ -196,30 +200,39 @@ describe("ProtocolFeesDistributor", () => {
       const expectedAmountToReceiveForUser2 = parseEther("3000");
 
       // Compute the proof for user1/user2
-      const hexProof1 = tree.getHexProof(
-        computeDoubleHash(user1.address, expectedAmountToReceiveForUser1.toString()),
-        0
-      );
-      const hexProof2 = tree.getHexProof(
-        computeDoubleHash(user2.address, expectedAmountToReceiveForUser2.toString()),
-        1
-      );
+      const hexProof1 = tree.getProof([user1.address, expectedAmountToReceiveForUser1.toString()]);
+      const hexProof2 = tree.getProof([user2.address, expectedAmountToReceiveForUser2.toString()]);
 
       // Owner adds protocol fees and unpause distribution
-      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("5000"));
+      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"));
 
       // 1. Verify leafs for user1/user2 are matched in the tree with the computed root
       assert.isTrue(
-        tree.verify(hexProof1, computeDoubleHash(user1.address, expectedAmountToReceiveForUser1.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [user1.address, expectedAmountToReceiveForUser1.toString()],
+          hexProof1
+        )
       );
 
       assert.isTrue(
-        tree.verify(hexProof2, computeDoubleHash(user2.address, expectedAmountToReceiveForUser2.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [user2.address, expectedAmountToReceiveForUser2.toString()],
+          hexProof2
+        )
       );
 
       // 2. User2 cannot claim with proof of user1
       assert.isFalse(
-        tree.verify(hexProof1, computeDoubleHash(user2.address, expectedAmountToReceiveForUser1.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [user2.address, expectedAmountToReceiveForUser1.toString()],
+          hexProof1
+        )
       );
 
       assert.isFalse(
@@ -232,7 +245,12 @@ describe("ProtocolFeesDistributor", () => {
 
       // 3. User1 cannot claim with proof of user2
       assert.isFalse(
-        tree.verify(hexProof2, computeDoubleHash(user1.address, expectedAmountToReceiveForUser2.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [user1.address, expectedAmountToReceiveForUser2.toString()],
+          hexProof2
+        )
       );
 
       assert.isFalse(
@@ -245,7 +263,12 @@ describe("ProtocolFeesDistributor", () => {
 
       // 4. User1 cannot claim with amount of user2
       assert.isFalse(
-        tree.verify(hexProof1, computeDoubleHash(user1.address, expectedAmountToReceiveForUser2.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [user1.address, expectedAmountToReceiveForUser2.toString()],
+          hexProof1
+        )
       );
 
       assert.isFalse(
@@ -258,7 +281,12 @@ describe("ProtocolFeesDistributor", () => {
 
       // 5. User2 cannot claim with amount of user1
       assert.isFalse(
-        tree.verify(hexProof2, computeDoubleHash(user2.address, expectedAmountToReceiveForUser1.toString()), hexRoot)
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [user2.address, expectedAmountToReceiveForUser1.toString()],
+          hexProof2
+        )
       );
 
       assert.isFalse(
@@ -271,10 +299,11 @@ describe("ProtocolFeesDistributor", () => {
 
       // 6. Non-eligible user cannot claim with proof/amount of user1
       assert.isFalse(
-        tree.verify(
-          hexProof1,
-          computeDoubleHash(notEligibleUser.address, expectedAmountToReceiveForUser1.toString()),
-          hexRoot
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [notEligibleUser.address, expectedAmountToReceiveForUser1.toString()],
+          hexProof1
         )
       );
 
@@ -288,10 +317,11 @@ describe("ProtocolFeesDistributor", () => {
 
       // 7. Non-eligible user cannot claim with proof/amount of user1
       assert.isFalse(
-        tree.verify(
-          hexProof2,
-          computeDoubleHash(notEligibleUser.address, expectedAmountToReceiveForUser2.toString()),
-          hexRoot
+        StandardMerkleTree.verify(
+          tree.root,
+          ["address", "uint"],
+          [notEligibleUser.address, expectedAmountToReceiveForUser2.toString()],
+          hexProof2
         )
       );
 
@@ -306,27 +336,24 @@ describe("ProtocolFeesDistributor", () => {
 
     it("Claim - User cannot claim if error in tree computation due to amount too high", async () => {
       // Users 1 to 4
-      const json = {
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-      };
+      const values = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
+      ];
 
       // Compute tree
-      const [tree, hexRoot] = createDoubleHashMerkleTree(json);
+      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
       const user1 = accounts[1];
       const expectedAmountToReceiveForUser1 = parseEther("5000");
 
       // Compute the proof for user1/user2
-      const hexProof1 = tree.getHexProof(
-        computeDoubleHash(user1.address, expectedAmountToReceiveForUser1.toString()),
-        0
-      );
+      const hexProof1 = tree.getProof([user1.address, expectedAmountToReceiveForUser1.toString()]);
 
       // Owner adds protocol fees and unpause distribution
-      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("4999.9999"));
+      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("4999.9999"));
 
       await expect(
         protocolFeesDistributor.connect(user1).claim(expectedAmountToReceiveForUser1, hexProof1)
@@ -380,19 +407,19 @@ describe("ProtocolFeesDistributor", () => {
 
     it("Owner - Owner cannot set twice the same Merkle Root", async () => {
       // Users 1 to 4
-      const json = {
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": parseEther("5000").toString(),
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": parseEther("3000").toString(),
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": parseEther("1000").toString(),
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": parseEther("1000").toString(),
-      };
+      const values = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
+      ];
 
-      const [, hexRoot] = createDoubleHashMerkleTree(json);
+      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
-      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("5000"));
+      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"));
 
       await expect(
-        protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(hexRoot, parseEther("5000"))
+        protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"))
       ).to.be.revertedWith("MerkleRootAlreadyUsed()");
     });
   });
