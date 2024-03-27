@@ -24,6 +24,9 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
     // Current round (users can only claim pending protocol fees for the current round)
     uint256 public currentRound;
 
+    // Users can claim until this timestamp
+    uint256 public canClaimUntil;
+
     // Max amount per user in current tree
     uint256 public maximumAmountPerUserInCurrentTree;
 
@@ -42,9 +45,11 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
     event ProtocolFeesClaimed(address indexed user, uint256 indexed round, uint256 amount);
     event ProtocolFeesDistributionUpdated(uint256 indexed round);
     event EthWithdrawn(uint256 amount);
+    event CanClaimUntilUpdated(uint256 timestamp);
 
     error AlreadyClaimed();
     error AmountHigherThanMax();
+    error ClaimPeriodEnded();
     error InvalidProof();
     error MerkleRootAlreadyUsed();
 
@@ -85,6 +90,10 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         // Verify the round is not claimed already
         if (hasUserClaimedForRound[currentRound][msg.sender]) {
             revert AlreadyClaimed();
+        }
+
+        if (block.timestamp > canClaimUntil) {
+            revert ClaimPeriodEnded();
         }
 
         (bool claimStatus, uint256 adjustedAmount) = _canClaim(msg.sender, amount, merkleProof);
@@ -135,6 +144,11 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         emit ProtocolFeesDistributionUpdated(currentRound);
     }
 
+    function updateCanClaimUntil(uint256 timestamp) external onlyRole(OPERATOR_ROLE) {
+        canClaimUntil = timestamp;
+        emit CanClaimUntilUpdated(timestamp);
+    }
+
     /**
      * @notice Pause claim
      */
@@ -170,6 +184,10 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         uint256 amount,
         bytes32[] calldata merkleProof
     ) external view returns (bool, uint256) {
+        if (block.timestamp > canClaimUntil) {
+            return (false, 0);
+        }
+
         return _canClaim(user, amount, merkleProof);
     }
 

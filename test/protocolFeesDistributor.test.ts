@@ -11,6 +11,13 @@ describe("ProtocolFeesDistributor", () => {
 
   let admin: SignerWithAddress;
   let accounts: SignerWithAddress[];
+  let blockTimestamp;
+
+  const getBlockTimestamp = async () => {
+    const blockNumber = await ethers.provider.getBlockNumber();
+    const block = await ethers.provider.getBlock(blockNumber);
+    return block.timestamp;
+  };
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -46,6 +53,12 @@ describe("ProtocolFeesDistributor", () => {
         .connect(admin)
         .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
+
+      blockTimestamp = await getBlockTimestamp();
+      tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
+      await expect(tx)
+        .to.emit(protocolFeesDistributor, "CanClaimUntilUpdated")
+        .withArgs(blockTimestamp + 100);
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of tree.entries()) {
@@ -181,6 +194,12 @@ describe("ProtocolFeesDistributor", () => {
     });
 
     it("Claim - Users cannot claim with wrong proofs", async () => {
+      blockTimestamp = await getBlockTimestamp();
+      const tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
+      await expect(tx)
+        .to.emit(protocolFeesDistributor, "CanClaimUntilUpdated")
+        .withArgs(blockTimestamp + 100);
+
       // Users 1 to 4
       const values = [
         ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
@@ -335,6 +354,12 @@ describe("ProtocolFeesDistributor", () => {
     });
 
     it("Claim - User cannot claim if error in tree computation due to amount too high", async () => {
+      blockTimestamp = await getBlockTimestamp();
+      const tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
+      await expect(tx)
+        .to.emit(protocolFeesDistributor, "CanClaimUntilUpdated")
+        .withArgs(blockTimestamp + 100);
+
       // Users 1 to 4
       const values = [
         ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
@@ -358,6 +383,44 @@ describe("ProtocolFeesDistributor", () => {
       await expect(
         protocolFeesDistributor.connect(user1).claim(expectedAmountToReceiveForUser1, hexProof1)
       ).to.be.revertedWith("AmountHigherThanMax()");
+    });
+
+    it("Claim - Users cannot claim if the current timestamp is pass canClaimUntil", async () => {
+      // Users 1 to 4
+      const values = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
+      ];
+
+      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
+
+      let tx = await protocolFeesDistributor
+        .connect(admin)
+        .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
+      await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
+
+      blockTimestamp = await getBlockTimestamp();
+      tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp);
+      await expect(tx).to.emit(protocolFeesDistributor, "CanClaimUntilUpdated").withArgs(blockTimestamp);
+
+      // All users except the 4th one claims
+      for (const [index, [user, value]] of tree.entries()) {
+        const signedUser = accounts[Number(index) + 1];
+
+        if (signedUser === accounts[3]) {
+          break;
+        }
+
+        // Compute the proof for the user
+        const hexProof = tree.getProof(index);
+
+        // Cannot double claim
+        await expect(protocolFeesDistributor.connect(signedUser).claim(value, hexProof)).to.be.revertedWith(
+          "ClaimPeriodEnded()"
+        );
+      }
     });
   });
 
