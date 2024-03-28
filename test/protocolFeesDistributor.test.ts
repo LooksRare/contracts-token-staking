@@ -385,7 +385,7 @@ describe("ProtocolFeesDistributor", () => {
       ).to.be.revertedWith("AmountHigherThanMax()");
     });
 
-    it("Claim - Users cannot claim if the current timestamp is pass canClaimUntil", async () => {
+    it("Claim - Users cannot claim if the current timestamp is >= canClaimUntil", async () => {
       // Users 1 to 4
       const values = [
         ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
@@ -466,24 +466,6 @@ describe("ProtocolFeesDistributor", () => {
         (await ethers.provider.getBalance(admin.address)).toString(),
         beforeWithdrawBalance.add(depositAmount).sub(txFee).toString()
       );
-    });
-
-    it("Owner - Owner cannot set twice the same Merkle Root", async () => {
-      // Users 1 to 4
-      const values = [
-        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
-        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
-        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
-        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
-      ];
-
-      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
-
-      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"));
-
-      await expect(
-        protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"))
-      ).to.be.revertedWith("MerkleRootAlreadyUsed()");
     });
   });
 });

@@ -36,9 +36,6 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
     // Merkle root for a round
     mapping(uint256 => bytes32) public merkleRootOfRound;
 
-    // Checks whether a merkle root was used
-    mapping(bytes32 => bool) public merkleRootUsed;
-
     // Keeps track on whether user has claimed at a given round
     mapping(uint256 => mapping(address => bool)) public hasUserClaimedForRound;
 
@@ -51,7 +48,6 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
     error AmountHigherThanMax();
     error ClaimPeriodEnded();
     error InvalidProof();
-    error MerkleRootAlreadyUsed();
 
     /**
      * @notice Constructor
@@ -92,7 +88,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
             revert AlreadyClaimed();
         }
 
-        if (block.timestamp > canClaimUntil) {
+        if (block.timestamp >= canClaimUntil) {
             revert ClaimPeriodEnded();
         }
 
@@ -132,13 +128,8 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         payable
         onlyRole(OPERATOR_ROLE)
     {
-        if (merkleRootUsed[merkleRoot]) {
-            revert MerkleRootAlreadyUsed();
-        }
-
         currentRound++;
         merkleRootOfRound[currentRound] = merkleRoot;
-        merkleRootUsed[merkleRoot] = true;
         maximumAmountPerUserInCurrentTree = newMaximumAmountPerUser;
 
         emit ProtocolFeesDistributionUpdated(currentRound);
@@ -184,7 +175,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         uint256 amount,
         bytes32[] calldata merkleProof
     ) external view returns (bool, uint256) {
-        if (block.timestamp > canClaimUntil) {
+        if (block.timestamp >= canClaimUntil) {
             return (false, 0);
         }
 
