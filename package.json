@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@looksrare/contracts-libs": "^3.1.0",
-    "@openzeppelin/contracts": "4.4.2"
+    "@openzeppelin/contracts": "5.0.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.2.3",
