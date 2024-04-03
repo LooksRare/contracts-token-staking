@@ -125,6 +125,7 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
     function updateProtocolFeesDistribution(bytes32 merkleRoot, uint256 newMaximumAmountPerUser)
         external
         payable
+        whenPaused
         onlyRole(OPERATOR_ROLE)
     {
         currentRound++;

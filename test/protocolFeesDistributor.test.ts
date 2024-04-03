@@ -49,10 +49,14 @@ describe("ProtocolFeesDistributor", () => {
 
       let tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       let tx = await protocolFeesDistributor
         .connect(admin)
         .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       blockTimestamp = await getBlockTimestamp();
       tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
@@ -114,10 +118,14 @@ describe("ProtocolFeesDistributor", () => {
 
       tree = StandardMerkleTree.of(values2, ["address", "uint256"]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       tx = await protocolFeesDistributor
         .connect(admin)
         .updateProtocolFeesDistribution(tree.root, parseEther("8000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("2");
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of tree.entries()) {
@@ -222,8 +230,12 @@ describe("ProtocolFeesDistributor", () => {
       const hexProof1 = tree.getProof([user1.address, expectedAmountToReceiveForUser1.toString()]);
       const hexProof2 = tree.getProof([user2.address, expectedAmountToReceiveForUser2.toString()]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       // Owner adds protocol fees and unpause distribution
       await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"));
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       // 1. Verify leafs for user1/user2 are matched in the tree with the computed root
       assert.isTrue(
@@ -377,8 +389,12 @@ describe("ProtocolFeesDistributor", () => {
       // Compute the proof for user1/user2
       const hexProof1 = tree.getProof([user1.address, expectedAmountToReceiveForUser1.toString()]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       // Owner adds protocol fees and unpause distribution
       await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("4999.9999"));
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       await expect(
         protocolFeesDistributor.connect(user1).claim(expectedAmountToReceiveForUser1, hexProof1)
@@ -396,10 +412,14 @@ describe("ProtocolFeesDistributor", () => {
 
       const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       let tx = await protocolFeesDistributor
         .connect(admin)
         .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       blockTimestamp = await getBlockTimestamp();
       tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp);
