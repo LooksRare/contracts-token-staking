@@ -67,7 +67,6 @@ contract ProtocolFeesDistributor is Pausable, ReentrancyGuard, AccessControl, Lo
         address _blastPointsOperator
     ) {
         WETH = _weth;
-        merkleRootUsed[bytes32(0)] = true;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         _grantRole(OPERATOR_ROLE, _owner);
