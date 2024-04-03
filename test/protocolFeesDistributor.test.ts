@@ -11,6 +11,13 @@ describe("ProtocolFeesDistributor", () => {
 
   let admin: SignerWithAddress;
   let accounts: SignerWithAddress[];
+  let blockTimestamp;
+
+  const getBlockTimestamp = async () => {
+    const blockNumber = await ethers.provider.getBlockNumber();
+    const block = await ethers.provider.getBlock(blockNumber);
+    return block.timestamp;
+  };
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -42,10 +49,20 @@ describe("ProtocolFeesDistributor", () => {
 
       let tree = StandardMerkleTree.of(values, ["address", "uint256"]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       let tx = await protocolFeesDistributor
         .connect(admin)
         .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
+
+      await protocolFeesDistributor.connect(admin).unpause();
+
+      blockTimestamp = await getBlockTimestamp();
+      tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
+      await expect(tx)
+        .to.emit(protocolFeesDistributor, "CanClaimUntilUpdated")
+        .withArgs(blockTimestamp + 100);
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of tree.entries()) {
@@ -101,10 +118,14 @@ describe("ProtocolFeesDistributor", () => {
 
       tree = StandardMerkleTree.of(values2, ["address", "uint256"]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       tx = await protocolFeesDistributor
         .connect(admin)
         .updateProtocolFeesDistribution(tree.root, parseEther("8000"), { value: parseEther("10000") });
       await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("2");
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       // All users except the 4th one claims
       for (const [index, [user, value]] of tree.entries()) {
@@ -181,6 +202,12 @@ describe("ProtocolFeesDistributor", () => {
     });
 
     it("Claim - Users cannot claim with wrong proofs", async () => {
+      blockTimestamp = await getBlockTimestamp();
+      const tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
+      await expect(tx)
+        .to.emit(protocolFeesDistributor, "CanClaimUntilUpdated")
+        .withArgs(blockTimestamp + 100);
+
       // Users 1 to 4
       const values = [
         ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
@@ -203,8 +230,12 @@ describe("ProtocolFeesDistributor", () => {
       const hexProof1 = tree.getProof([user1.address, expectedAmountToReceiveForUser1.toString()]);
       const hexProof2 = tree.getProof([user2.address, expectedAmountToReceiveForUser2.toString()]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       // Owner adds protocol fees and unpause distribution
       await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"));
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       // 1. Verify leafs for user1/user2 are matched in the tree with the computed root
       assert.isTrue(
@@ -335,6 +366,12 @@ describe("ProtocolFeesDistributor", () => {
     });
 
     it("Claim - User cannot claim if error in tree computation due to amount too high", async () => {
+      blockTimestamp = await getBlockTimestamp();
+      const tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp + 100);
+      await expect(tx)
+        .to.emit(protocolFeesDistributor, "CanClaimUntilUpdated")
+        .withArgs(blockTimestamp + 100);
+
       // Users 1 to 4
       const values = [
         ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
@@ -352,12 +389,58 @@ describe("ProtocolFeesDistributor", () => {
       // Compute the proof for user1/user2
       const hexProof1 = tree.getProof([user1.address, expectedAmountToReceiveForUser1.toString()]);
 
+      await protocolFeesDistributor.connect(admin).pause();
+
       // Owner adds protocol fees and unpause distribution
       await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("4999.9999"));
+
+      await protocolFeesDistributor.connect(admin).unpause();
 
       await expect(
         protocolFeesDistributor.connect(user1).claim(expectedAmountToReceiveForUser1, hexProof1)
       ).to.be.revertedWith("AmountHigherThanMax()");
+    });
+
+    it("Claim - Users cannot claim if the current timestamp is >= canClaimUntil", async () => {
+      // Users 1 to 4
+      const values = [
+        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
+        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
+        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
+        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
+      ];
+
+      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
+
+      await protocolFeesDistributor.connect(admin).pause();
+
+      let tx = await protocolFeesDistributor
+        .connect(admin)
+        .updateProtocolFeesDistribution(tree.root, parseEther("5000"), { value: parseEther("10000") });
+      await expect(tx).to.emit(protocolFeesDistributor, "ProtocolFeesDistributionUpdated").withArgs("1");
+
+      await protocolFeesDistributor.connect(admin).unpause();
+
+      blockTimestamp = await getBlockTimestamp();
+      tx = await protocolFeesDistributor.connect(admin).updateCanClaimUntil(blockTimestamp);
+      await expect(tx).to.emit(protocolFeesDistributor, "CanClaimUntilUpdated").withArgs(blockTimestamp);
+
+      // All users except the 4th one claims
+      for (const [index, [user, value]] of tree.entries()) {
+        const signedUser = accounts[Number(index) + 1];
+
+        if (signedUser === accounts[3]) {
+          break;
+        }
+
+        // Compute the proof for the user
+        const hexProof = tree.getProof(index);
+
+        // Cannot double claim
+        await expect(protocolFeesDistributor.connect(signedUser).claim(value, hexProof)).to.be.revertedWith(
+          "ClaimPeriodEnded()"
+        );
+      }
     });
   });
 
@@ -403,24 +486,6 @@ describe("ProtocolFeesDistributor", () => {
         (await ethers.provider.getBalance(admin.address)).toString(),
         beforeWithdrawBalance.add(depositAmount).sub(txFee).toString()
       );
-    });
-
-    it("Owner - Owner cannot set twice the same Merkle Root", async () => {
-      // Users 1 to 4
-      const values = [
-        ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8", parseEther("5000").toString()],
-        ["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", parseEther("3000").toString()],
-        ["0x90F79bf6EB2c4f870365E785982E1f101E93b906", parseEther("1000").toString()],
-        ["0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", parseEther("1000").toString()],
-      ];
-
-      const tree = StandardMerkleTree.of(values, ["address", "uint256"]);
-
-      await protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"));
-
-      await expect(
-        protocolFeesDistributor.connect(admin).updateProtocolFeesDistribution(tree.root, parseEther("5000"))
-      ).to.be.revertedWith("MerkleRootAlreadyUsed()");
     });
   });
 });
